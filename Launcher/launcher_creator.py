@@ -9,7 +9,7 @@ import zipfile
 import subprocess
 import dirhash
 
-LAUNCHER_TEMPLATE = "launcher_template.py"
+LAUNCHER_TEMPLATE = "launcher.py"
 LAUNCHER_SCRIPT = "launcher.py"
 LAUNCHER_EXE = LAUNCHER_SCRIPT.replace(".py", ".exe")
 HASH_FOR_DIR = "md5"

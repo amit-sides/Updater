@@ -11,6 +11,7 @@ def init_settings():
 
     __values__.update(dict(
         SOFTWARE_NAME="X",
+        PROGRAM="ex.exe",
         UPDATER_NAME="Updater",
         LAUNCHER_NAME="launcher.exe",
         RSA_KEY_SIZE=1024,  # in bits
@@ -18,6 +19,7 @@ def init_settings():
         VERSION_CHUNK_SIZE=1460,  # MTU - Headers size (assuming MTU=1500)
         CONNECTION_TIMEOUT=10,
         HASH_MODULE=hashlib.sha512,
+        UPDATE_REGISTRY_FORMAT="Update_{}",
     ))
 
     __values__.update(dict(
@@ -37,6 +39,9 @@ def init_settings():
         # Dynamic settings (created automatically by the settings above)
 
         LOGGER_PATH=rf"{__values__['UPDATER_PATH']}{os.path.sep}log.txt",
+        UPDATE_PATH=rf"{__values__['UPDATER_PATH']}{os.path.sep}update.zip",
+
+        AUTO_INSTALLATIONS_REGISTRY=rf"{__values__['REGISTRY_PATH']}\auto_update"
     ))
 
     load_settings()

@@ -11,6 +11,27 @@ def exists(name):
         return True
     except FileNotFoundError:
         return False
+    finally:
+        winreg.CloseKey(registry_key)
+
+
+def delete(name):
+    registry_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, settings.REGISTRY_PATH, 0, winreg.KEY_WRITE)
+    winreg.DeleteValue(registry_key, name)
+    winreg.CloseKey(registry_key)
+
+
+def get_all_sub_values():
+    registry_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, settings.REGISTRY_PATH, 0, winreg.KEY_READ)
+    items_count = winreg.QueryInfoKey(registry_key)[1]
+
+    items = []
+    for i in range(items_count):
+        item = winreg.EnumValue(registry_key, i)[0]
+        items.append(item)
+
+    winreg.CloseKey(registry_key)
+    return items
 
 
 def get_value(name):

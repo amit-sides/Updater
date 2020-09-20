@@ -30,7 +30,7 @@ class Version(object):
         registry.set_value(settings.UPDATE_MINOR_REGISTRY, self.minor)
 
     def get_update_registry_path(self):
-        return rf"Update_{self}"
+        return settings.UPDATE_REGISTRY_FORMAT.format(self)
 
     @staticmethod
     def get_installed_version():
@@ -80,6 +80,13 @@ class Updater(object):
         self.sender = None
         self.management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.setup_listener()
+
+    @staticmethod
+    def is_server():
+        # The updater can be run as an official updates server
+        # An update server is distinguished from a normal client only by the
+        # fact that it knows the private RSA key
+        return registry.exists(settings.PRIVATE_KEY_REGISTRY)
 
     def setup_listener(self):
         port = registry.get_value(settings.PORT_REGISTRY)
@@ -138,16 +145,21 @@ class Updater(object):
         message_type = int(message.type)
         # These messages don't require authentication (they are created by the clients)
         # In these messages the 'signature' is nothing but a CRC32 checksum
-        if message_type == MessageType.REQUEST_UPDATE_MESSAGE:
+        if message_type in [MessageType.REQUEST_VERSION, MessageType.REQUEST_UPDATE]:
             calculated_checksum = zlib.crc32(message.data)
             if calculated_checksum != message.signature:
                 # Invalid checksum, ignore message...
                 logging.info(f"Received a message with incorrect checksum. received {hex(message.signature)} expected {hex(calculated_checksum)}.")
                 return
 
-            update_sender = threading.Thread(target=Updater.send_version_update, args=(self.message, self.sender))
-            update_sender.setDaemon(True)
-            update_sender.start()
+            if message_type == MessageType.REQUEST_VERSION:
+                update_sender = threading.Thread(target=Updater.send_version_update, args=(self.message, self.sender))
+                update_sender.setDaemon(True)
+                update_sender.start()
+            elif message_type == MessageType.REQUEST_UPDATE and Updater.is_server():
+                # Only the server answers to MessageType.REQUEST_UPDATE
+                self.handle_request_update()
+
             return
 
         # Validates the message signature
@@ -164,6 +176,56 @@ class Updater(object):
         else:
             # Unimplemented message type, probably an error...
             logging.error(f"Received an unimplemented message type {message_type}")
+
+    def handle_request_update(self):
+        current_version = Version.get_current_version()
+        update_path = registry.get_value(current_version.get_update_registry_path())
+
+        if not os.path.exists(update_path):
+            logging.error("Update file does not exist! Updates will not be available.")
+            return
+
+        # Sign the update file
+        hash_object = settings.HASH_MODULE()
+        update_size = os.stat(update_path).st_size
+        bytes_read = 0
+        with open(update_path, "rb") as update:
+            while bytes_read < update_size:
+                data = update.read(settings.VERSION_CHUNK_SIZE)
+                hash_object.update(data)
+
+        version_update_dict = dict(
+            type=MessageType.VERSION_UPDATE,
+            header_signature=0,
+            major=current_version.major,
+            minor=current_version.minor,
+            size=update_size,
+            update_signature=rsa_signing.sign_hash(hash_object),
+            spread=False
+        )
+        try:
+            version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
+
+            # Update signature
+            version_update_dict["header_signature"] = constructs.sign_message(version_update_message)
+            version_update_message = constructs.REQUEST_UPDATE_MESSAGE.build(version_update_dict)
+        except construct.ConstructError:
+            # Should never occur
+            logging.critical(f"Failed to build version update message")
+            return
+
+        sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sender.settimeout(settings.CONNECTION_TIMEOUT)
+        port = registry.get_value(settings.PORT_REGISTRY)
+
+        try:
+            # Sends the message
+            sender.sendto(version_update_message, (self.sender[0], port))
+        except socket.error:
+            logging.error("Unknown error while sending update message :(")
+        finally:
+            sender.shutdown(2)
+            sender.close()
 
     def handle_server_update(self):
         if len(self.message) != constructs.SERVER_UPDATE_MESSAGE.sizeof():
@@ -224,9 +286,6 @@ class Updater(object):
 
         # The version contains an update! download it!
         if self.download_update(message):
-            # The version was downloaded successfully, install if necessary
-            self.handle_installation()
-
             # Checks if the sender requested to spread this message using broadcast
             if message.spread:
                 self.broadcast_message()
@@ -244,7 +303,7 @@ class Updater(object):
             # Build the request version message
             requested_version = Version(message.major, message.minor)
             request_version_dict =  dict(
-                                        type=MessageType.REQUEST_UPDATE,
+                                        type=MessageType.REQUEST_VERSION,
                                         crc32=0,
                                         listening_port=port,
                                         major=requested_version.major,
@@ -262,7 +321,7 @@ class Updater(object):
                 return False
 
             # Creating the file for the update
-            update_filepath = registry.get_value(settings.EXECUTABLE_PATH)
+            update_filepath = settings.UPDATE_PATH
             update_filepath = f"{update_filepath}.{requested_version}"
             update_file = open(update_filepath, "wb")
 
@@ -314,46 +373,6 @@ class Updater(object):
         finally:
             listener.shutdown(2)
             listener.close()
-
-        return True
-
-    @staticmethod
-    def handle_installation():
-        # Checks if an update is available
-        if Version.is_updated():
-            return True
-
-        # Checks if the update should be installed automatically
-        automatic_installation = registry.get_value(settings.AUTO_INSTALLATIONS)
-        if automatic_installation == 0:
-            return True
-
-        # Get the path of the installed executable and the update file
-        version_registry = Version.get_current_version().get_update_registry_path()
-        update_filepath = registry.get_value(version_registry)
-        executable_path = settings.EXECUTABLE_PATH
-
-        # Replace the executable with the update file
-        try:
-            shutil.copy(update_filepath, executable_path)
-            # If an error occurred, we ignore it and let the user manually update when they execute the launcher
-        except PermissionError:
-            logging.info(f"Failed to replace executable {executable_path}. Insufficient permission or file is running.")
-            return False
-        except OSError:
-            logging.error(f"Failed to replace executable {executable_path}. Unknown OS Error.")
-            return False
-
-        # Version was updated! Update the registry
-        registry.set_value(version_registry, executable_path)
-        Version.get_current_version().update_installed_version()
-
-        # Delete the useless update file (might fail but it doesn't really matter)
-        try:
-            os.remove(update_filepath)
-        except OSError:
-            logging.info(f"Unable to delete update file {update_filepath}. not too terrible...")
-            # Continues...
 
         return True
 
