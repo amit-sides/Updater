@@ -1,2 +1,2 @@
 # Updater
-A Utility to manage updates for a Windows program
+A utility to manage updates for a Windows program
