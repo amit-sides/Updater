@@ -3,13 +3,13 @@ import hashlib
 import json
 import logging
 
-values = dict()
+__values__ = dict()
 
 
 def init_settings():
-    global values
+    global __values__
 
-    values.update(dict(
+    __values__.update(dict(
         SOFTWARE_NAME="X",
         UPDATER_NAME="Updater",
         LAUNCHER_NAME="launcher.exe",
@@ -20,23 +20,23 @@ def init_settings():
         HASH_MODULE=hashlib.sha512,
     ))
 
-    values.update(dict(
+    __values__.update(dict(
         # Dynamic settings (created automatically by the settings above)
 
-        REGISTRY_PATH=rf"Software\{values['SOFTWARE_NAME']}\{values['UPDATER_NAME']}",
-        SOFTWARE_PATH=rf"%ProgramFiles%{os.path.sep}{values['SOFTWARE_NAME']}",
-        UPDATER_PATH=rf"%ProgramFiles%{os.path.sep}{values['UPDATER_NAME']}",
-        LAUNCHER_PATH=rf"%ProgramFiles%{os.path.sep}{values['LAUNCHER_NAME']}",
-        SETTINGS_PATH=rf"{values['UPDATER_PATH']}{os.path.sep}settings.json",
+        REGISTRY_PATH=rf"Software\{__values__['SOFTWARE_NAME']}\{__values__['UPDATER_NAME']}",
+        SOFTWARE_PATH=rf"%ProgramFiles%{os.path.sep}{__values__['SOFTWARE_NAME']}",
+        UPDATER_PATH=rf"%ProgramFiles%{os.path.sep}{__values__['UPDATER_NAME']}",
+        LAUNCHER_PATH=rf"%ProgramFiles%{os.path.sep}{__values__['LAUNCHER_NAME']}",
+        SETTINGS_PATH=rf"{__values__['UPDATER_PATH']}{os.path.sep}settings.json",
 
         # Signature is also used as crc32 sometimes, so it needs to be at least 4 bytes long
-        SIGNATURE_SIZE=max(values['RSA_KEY_SIZE'] / 8, 4),  # in bytes
+        SIGNATURE_SIZE=max(__values__['RSA_KEY_SIZE'] / 8, 4),  # in bytes
     ))
 
-    values.update(dict(
+    __values__.update(dict(
         # Dynamic settings (created automatically by the settings above)
 
-        LOGGER_PATH=rf"{values['UPDATER_PATH']}{os.path.sep}log.txt",
+        LOGGER_PATH=rf"{__values__['UPDATER_PATH']}{os.path.sep}log.txt",
     ))
 
     load_settings()
@@ -44,32 +44,32 @@ def init_settings():
 
 
 def load_settings():
-    global values
+    global __values__
 
     try:
-        with open(values['SETTINGS_PATH'], "r") as settings_file:
+        with open(__values__['SETTINGS_PATH'], "r") as settings_file:
             data = settings_file.read()
-            values.update(json.loads(data))
+            __values__.update(json.loads(data))
     except FileNotFoundError:
         # If settings file is not found, use default settings
         pass
 
 
 def save_settings():
-    global values
+    global __values__
 
     try:
-        with open(values['SETTINGS_PATH'], "w") as settings_file:
-            data = json.dumps(values)
+        with open(__values__['SETTINGS_PATH'], "w") as settings_file:
+            data = json.dumps(__values__)
             settings_file.write(data)
     except PermissionError:
-        logging.critical(f"Failed to write settings file due to PermissionError: {values['SETTINGS_PATH']}")
+        logging.critical(f"Failed to write settings file due to PermissionError: {__values__['SETTINGS_PATH']}")
 
 
 def __getattr__(name):
-    global values
+    global __values__
 
-    if name in values:
-        return values[name]
+    if name in __values__:
+        return __values__[name]
 
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
