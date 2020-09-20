@@ -1,0 +1,4 @@
+dirhash
+scandir
+pyinstaller
+pysimplegui
