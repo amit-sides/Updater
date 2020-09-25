@@ -19,7 +19,7 @@ __values__ = dict(SOFTWARE_NAME="X",
                   # Default registry values
                   AUTO_INSTALLATIONS=0,
                   UPDATING_SERVER="127.0.0.1",
-                  PORT=77777,
+                  PORT=55555,
                   UPDATE_MAJOR=1,
                   UPDATE_MINOR=0,
                   VERSION_MAJOR=1,

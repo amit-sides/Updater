@@ -1,9 +1,14 @@
+import os
+import sys
 import win32serviceutil
 import win32service
 import win32event
 import win32file
 import servicemanager
 import logging
+
+# Adds .. to path - The service runs from python's directory so this is the only good way doing it
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from Updater import settings
 from Updater import registry
@@ -29,6 +34,7 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
         servicemanager.LogMsg(servicemanager.EVENTLOG_INFORMATION_TYPE,
                               servicemanager.PYS_SERVICE_STARTED,
                               (self._svc_name_, ''))
+        self.ReportServiceStatus(win32service.SERVICE_RUNNING)
         self.run()
 
     @staticmethod
@@ -68,13 +74,13 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
         # Assumes all file are placed correctly at settings.SOFTWARE_PATH
         settings.init_settings()
 
+        # Setup the logger
+        UpdaterServerSvc.setup_logger()
+
+        # Setup the registry
         UpdaterServerSvc.init_registry()
-        pass
 
     def run(self):
-        # Setup the logger
-        self.setup_logger()
-
         # Initializes the service
         self.init()
 
@@ -84,11 +90,13 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
 
         # Handling events...
         while self.running:
+
             # Creates an event to handle IO on the socket
             socket_event = win32event.CreateEvent(None, True, False, None)
             win32file.WSAEventSelect(self.updater.management_socket, socket_event, win32file.FD_READ | win32file.FD_CLOSE)
 
             # Waits for either an event on the socket or a stop request of the service, waits indefinitely
+            logging.info("Waiting for packet...")
             event_result = win32event.WaitForMultipleObjects([socket_event, self.stop_event_handle], 0, win32event.INFINITE)
             if event_result == win32event.WAIT_TIMEOUT:
                 # Timeout occurred, ignoring...
