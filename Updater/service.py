@@ -5,13 +5,15 @@ import win32file
 import servicemanager
 import logging
 
-import settings
-import updater
+from Updater import settings
+from Updater import registry
+from Updater import updater
 
 
 class UpdaterServerSvc(win32serviceutil.ServiceFramework):
     _svc_name_ = f"{settings.SOFTWARE_NAME}Updater"
     _svc_display_name_ = f"{settings.SOFTWARE_NAME} Updater"
+    _svc_description_ = f"Updates the program {settings.SOFTWARE_NAME}"
 
     def __init__(self, args):
         win32serviceutil.ServiceFramework.__init__(self, args)
@@ -36,9 +38,45 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
                             format="%(asctime)-19s [%(levelname)-8s] %(funcName)-20s | %(message)s",
                             datefmt="%d.%m.%Y %H:%M:%S")
 
+    @staticmethod
+    def init_registry():
+        if not registry.exists(settings.REGISTRY_PATH):
+            registry.create_key(settings.REGISTRY_PATH)
+        if not registry.exists(settings.AUTO_INSTALLATIONS_REGISTRY):
+            registry.set_value(settings.AUTO_INSTALLATIONS_REGISTRY, settings.AUTO_INSTALLATIONS)
+        if not registry.exists(settings.UPDATING_SERVER_REGISTRY):
+            registry.set_value(settings.UPDATING_SERVER_REGISTRY, settings.UPDATING_SERVER)
+        if not registry.exists(settings.PORT_REGISTRY):
+            registry.set_value(settings.PORT_REGISTRY, settings.PORT)
+        if not registry.exists(settings.RSA_MODULO_REGISTRY):
+            registry.set_value(settings.RSA_MODULO_REGISTRY, settings.RSA_MODULO)
+        if not registry.exists(settings.RSA_PUBLIC_REGISTRY):
+            registry.set_value(settings.RSA_PUBLIC_REGISTRY, settings.PUBLIC_KEY)
+        if not registry.exists(settings.UPDATE_MAJOR_REGISTRY):
+            registry.set_value(settings.UPDATE_MAJOR_REGISTRY, settings.UPDATE_MAJOR)
+        if not registry.exists(settings.UPDATE_MINOR_REGISTRY):
+            registry.set_value(settings.UPDATE_MINOR_REGISTRY, settings.UPDATE_MINOR)
+        if not registry.exists(settings.VERSION_MAJOR_REGISTRY):
+            registry.set_value(settings.VERSION_MAJOR_REGISTRY, settings.VERSION_MAJOR)
+        if not registry.exists(settings.VERSION_MINOR_REGISTRY):
+            registry.set_value(settings.VERSION_MINOR_REGISTRY, settings.VERSION_MINOR)
+        if not registry.exists(settings.ADDRESS_ID_REGISTRY):
+            registry.set_value(settings.ADDRESS_ID_REGISTRY, settings.ADDRESS_ID)
+
+    @staticmethod
+    def init():
+        # Assumes all file are placed correctly at settings.SOFTWARE_PATH
+        settings.init_settings()
+
+        UpdaterServerSvc.init_registry()
+        pass
+
     def run(self):
         # Setup the logger
         self.setup_logger()
+
+        # Initializes the service
+        self.init()
 
         # Creates the updater
         self.updater = updater.Updater()

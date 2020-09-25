@@ -83,7 +83,8 @@ def progressive_copy(src, dest, silent):
 def cleanup_old_updates():
     current_version_registry = updater.Version.get_current_version().get_update_registry_path()
     all_sub_values = registry.get_all_sub_values()
-    all_sub_values = [v for v in all_sub_values if v.startswith(settings.UPDATE_REGISTRY_FORMAT) and v != current_version_registry]
+    update_prefix = settings.UPDATE_REGISTRY_FORMAT.format("")
+    all_sub_values = [v for v in all_sub_values if v.startswith(update_prefix) and v != current_version_registry]
 
     for update_registry in all_sub_values:
         file = registry.get_value(update_registry)
@@ -145,7 +146,7 @@ def check_for_update():
 def install_update(silent):
     # Checks if an update is available
     if updater.Version.is_updated():
-        return
+        return "No update is available."
 
     # Checks if the update should be installed automatically
     automatic_installation = registry.get_value(settings.AUTO_INSTALLATIONS_REGISTRY)
@@ -184,6 +185,50 @@ def install_update(silent):
     update(settings.UPDATE_PATH, silent)
 
 
+def get_layout():
+    update_frame = [
+        [sg.Button("Query server for update")],
+        [sg.CB("Automatically update and launch next time", key="-AUTO-")],
+    ]
+
+    installed_version = updater.Version.get_installed_version()
+    update_version = updater.Version.get_current_version()
+
+    layout = [[sg.Button("Launch"), sg.Button("Check For Update")],
+              [sg.T("Version: " + str(installed_version), key="-INSTALL-"), sg.T("Update: " + str(update_version), key="-UPDATE-")],
+              [sg.Frame("Updater", update_frame)]]
+    return layout
+
+
+def display_gui():
+    layout = get_layout()
+
+    window = sg.Window('Launcher', layout)
+
+    should_launch = False
+    while True:  # Event Loop
+        event, values = window.read()
+        if event == sg.WIN_CLOSED or event == 'Exit':
+            break
+        if event == 'Check For Update':
+            install_update(False)
+            # Needs to update labels version
+        elif event == "Launch":
+            should_launch = True
+            break
+        elif event == "-AUTO-":
+            # Update registry to auto-update
+            pass
+
+        sg.Popup('Title',
+                 'The results of the window.',
+                 'The button clicked was "{}"'.format(event),
+                 'The values are', values)
+
+    window.close()
+    return should_launch
+
+
 def setup(apply_update, check_update, update_file, no_launch, silent):
     if not silent:
         # Sets the GUI theme
@@ -195,13 +240,18 @@ def setup(apply_update, check_update, update_file, no_launch, silent):
             return False
         return update(update_file, silent)
 
+    should_launch = True
     if check_update:
         check_for_update()
-    if apply_update and not check_update:
+        should_launch = False
+    elif apply_update:
         install_update(silent)
+        should_launch = False
+    elif not silent:
+        should_launch = display_gui()
 
     cleanup_old_updates()
-    return True
+    return should_launch
 
 
 def run(no_launch):

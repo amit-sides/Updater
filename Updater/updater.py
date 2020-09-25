@@ -7,11 +7,11 @@ import zlib
 import threading
 import shutil
 
-import constructs
-from constructs import MessageType
-import rsa_signing
-import settings
-import registry
+from Updater import constructs
+from Updater.constructs import MessageType
+from Updater import rsa_signing
+from Updater import settings
+from Updater import registry
 
 
 class Version(object):
@@ -86,7 +86,7 @@ class Updater(object):
         # The updater can be run as an official updates server
         # An update server is distinguished from a normal client only by the
         # fact that it knows the private RSA key
-        return registry.exists(settings.PRIVATE_KEY_REGISTRY)
+        return registry.exists(settings.RSA_PRIVATE_REGISTRY)
 
     def setup_listener(self):
         port = registry.get_value(settings.PORT_REGISTRY)

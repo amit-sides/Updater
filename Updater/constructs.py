@@ -3,8 +3,8 @@ import construct
 import enum
 import zlib
 
-import settings
-import rsa_signing
+from Updater import settings
+from Updater import rsa_signing
 
 
 class MessageType(enum.IntEnum):
