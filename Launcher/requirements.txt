@@ -1,4 +1,2 @@
-dirhash
-scandir
 pyinstaller
 pysimplegui
