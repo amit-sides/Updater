@@ -114,8 +114,9 @@ class Updater(object):
         try:
             message, sender = self.management_socket.recvfrom(settings.MESSAGE_SIZE)
         except socket.error:
-            logging.info("Failed to receive message on management socket.")
+            logging.info("Failed to receive message on management socket. The message is probably too long.")
             message = sender = None
+            return
 
         if len(message) != settings.MESSAGE_SIZE:
             logging.info(f"Received message with incorrect size: received {len(message)} expected {settings.MESSAGE_SIZE}")

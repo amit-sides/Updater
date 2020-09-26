@@ -27,15 +27,14 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
         self.running = False
 
     def SvcStop(self):
-        self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
-        win32event.SetEvent(self.stop_event_handle)
+        self.stop()
 
     def SvcDoRun(self):
         servicemanager.LogMsg(servicemanager.EVENTLOG_INFORMATION_TYPE,
                               servicemanager.PYS_SERVICE_STARTED,
                               (self._svc_name_, ''))
         self.ReportServiceStatus(win32service.SERVICE_RUNNING)
-        self.run()
+        self.start()
 
     @staticmethod
     def setup_logger():
@@ -80,6 +79,18 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
         # Setup the registry
         UpdaterServerSvc.init_registry()
 
+    def stop(self):
+        self.running = False
+        self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
+        win32event.SetEvent(self.stop_event_handle)
+
+    def start(self):
+        try:
+            self.run()
+        except Exception as e:
+            logging.exception("General exception caught:")
+            raise
+
     def run(self):
         # Initializes the service
         self.init()
@@ -98,22 +109,23 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
             # Waits for either an event on the socket or a stop request of the service, waits indefinitely
             logging.info("Waiting for packet...")
             event_result = win32event.WaitForMultipleObjects([socket_event, self.stop_event_handle], 0, win32event.INFINITE)
+
             if event_result == win32event.WAIT_TIMEOUT:
                 # Timeout occurred, ignoring...
                 pass
-            elif event_result == win32event.WAIT_ABANDONED_0 + 0:
+            elif event_result == win32event.WAIT_OBJECT_0 + 0:
                 # socket_event occurred, The socket has some IO that needs to be handled
                 self.updater.receive_message()
                 if self.updater.message:
                     self.updater.handle_message()
-            elif event_result == win32event.WAIT_ABANDONED_0 + 1:
+            elif event_result == win32event.WAIT_OBJECT_0 + 1:
                 # stop_event occurred
                 logging.info("Request to stop service detected. Stopping service...")
-                self.running = False
+                self.stop()
             else:
                 # Error occurred
                 logging.critical("WaitForMultipleObjects failed!")
-                self.running = False
+                self.stop()
 
 
 if __name__ == '__main__':
