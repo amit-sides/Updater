@@ -1,0 +1,6 @@
+pywin32
+pycryptodome
+construct
+constructs
+servicemanager
+validators

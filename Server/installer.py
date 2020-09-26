@@ -4,6 +4,8 @@ import json
 import zipfile
 import construct
 import argparse
+
+import validators
 from Crypto.PublicKey import RSA
 
 from Updater import settings
@@ -69,24 +71,99 @@ def generate_rsa_keys():
     )
     if not add_to_settings(rsa_settings):
         print(f"Failed to add rsa key to {DEFAULT_SETTINGS_PATH}")
+        return False
 
     # Adds the keys to registry
     registry.set_value(settings.RSA_MODULO_REGISTRY, hex(key_pair.n))
     registry.set_value(settings.RSA_PUBLIC_REGISTRY, hex(key_pair.e))
     registry.set_value(settings.RSA_PRIVATE_REGISTRY, hex(key_pair.d))
+    return True
 
 
 def show_rsa_keys():
-    pass
+    print("RSA modulo: (n):")
+    if registry.exists(settings.RSA_MODULO_REGISTRY):
+        print(registry.get_value(settings.RSA_MODULO_REGISTRY))
+    else:
+        print("Not available.")
+
+    print("RSA Public Key: (e)")
+    if registry.exists(settings.RSA_PUBLIC_REGISTRY):
+        print(registry.get_value(settings.RSA_PUBLIC_REGISTRY))
+    else:
+        print("Not available.")
+
+    print("RSA Private Key: (d)")
+    if registry.exists(settings.RSA_PRIVATE_REGISTRY):
+        print(registry.get_value(settings.RSA_PRIVATE_REGISTRY))
+    else:
+        print("Not available.")
+    return True
 
 
 def show_server_information():
-    pass
+    address_id = "Not available"
+    if registry.exists(settings.ADDRESS_ID_REGISTRY):
+        address_id = registry.get_value(settings.ADDRESS_ID_REGISTRY)
+
+    ip = "Not available"
+    if registry.exists(settings.UPDATING_SERVER_REGISTRY):
+        ip = registry.get_value(settings.UPDATING_SERVER_REGISTRY)
+
+    port = "Not available"
+    if registry.exists(settings.PORT_REGISTRY):
+        port = registry.get_value(settings.PORT_REGISTRY)
+
+    print(f"Address ID: \t{address_id}.")
+    print(f"Domain (IP): \t{ip}.")
+    print(f"Port: \t\t{port}")
+    return True
 
 
-def send_server_information(ip, port):
-    # Check validation of IP and port!!!
-    pass
+def send_server_information(ip, port, spread=True):
+    # Validates the ip or domain (syntax only)
+    if validators.domain(ip) is not True:
+        if validators.ip_address.ipv4(ip) is not True:
+            if validators.ip_address.ipv6(ip) is not True:
+                print(f"Failed to validate ip or domain: {ip}. Check for typing mistakes.")
+                return False
+
+    # Validates port number
+    if validators.between.between(ip, min=1, max=65535) is not True:
+        print(f"Invalid port number: {port} is not between 1 and 65535")
+        return False
+
+    if not registry.exists(settings.ADDRESS_ID_REGISTRY):
+        print(f"Address ID was not found in the registry! (Location: {settings.ADDRESS_ID_REGISTRY})")
+        return False
+    address_id = registry.get_value(settings.ADDRESS_ID_REGISTRY)
+
+    # Creates server message
+    server_update_dict = dict(
+        type=MessageType.SERVER_UPDATE,
+        signature=0,
+        address_id=address_id + 1,  # Increases the address id, to indicate the information is new and up to date.
+        address_size=len(ip),
+        address=ip,
+        port=port,
+        spread=spread
+    )
+
+    # Calculate signature of message
+    try:
+        server_update_message = constructs.SERVER_UPDATE_MESSAGE.build(server_update_dict)
+
+        # Update signature
+        server_update_dict["signature"] = constructs.sign_message(server_update_message)
+        server_update_message = constructs.SERVER_UPDATE_MESSAGE.build(server_update_dict)
+    except construct.ConstructError:
+        # Should never occur
+        print(f"Failed to build server update message")
+        return False
+
+    # Sends server information update (should also update local server information)
+    updater.send_broadcast(server_update_message)
+    return True
 
 
 def create_update(update_path, major, minor):
@@ -203,7 +280,7 @@ def main():
     # broadcast
     update_broadcast = subparsers.add_parser("broadcast")
     update_broadcast.add_argument("-s", "--spread", action="store_true",
-                        help="Sets 'spread' bit flag in broadcast message, will tell other clients to forward this message.")
+                                  help="Sets 'spread' bit flag in broadcast message, will tell other clients to forward this message.")
     update_broadcast.set_defaults(func=broadcast_update_version)
 
     # Sub-commands of server
@@ -219,10 +296,16 @@ def main():
     server_update.add_argument("port", metavar="<port>", type=int,
                                help="The port that the updating service will listen on.")
     server_update.add_argument("-s", "--spread", action="store_true",
-                                  help="Sets 'spread' bit flag in broadcast message, will tell other clients to forward this message.")
+                               help="Sets 'spread' bit flag in broadcast message, will tell other clients to forward this message.")
     server_update.set_defaults(func=send_server_information)
 
+    # Parse everything
     args = parser.parse_args()
+
+    # Initialize settings
+    settings.init_settings(save=False)
+
+    # call command function
     args.func(args)
 
 
