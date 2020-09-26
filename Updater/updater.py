@@ -14,6 +14,25 @@ from Updater import settings
 from Updater import registry
 
 
+def send_broadcast(message):
+    broadcaster = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    broadcaster.settimeout(settings.CONNECTION_TIMEOUT)
+    port = registry.get_value(settings.PORT_REGISTRY)
+
+    try:
+        # Enable broadcasting mode
+        broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+        # Sends the broadcast
+        broadcaster.sendto(message, ("<broadcast>", port))
+
+    except socket.error:
+        logging.error("Unknown error while sending broadcast :(")
+    finally:
+        broadcaster.shutdown(2)
+        broadcaster.close()
+
+
 class Version(object):
     def __init__(self, major, minor):
         self.major = major
@@ -93,22 +112,7 @@ class Updater(object):
         self.management_socket.bind(("0.0.0.0", port))
 
     def broadcast_message(self):
-        broadcaster = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        broadcaster.settimeout(settings.CONNECTION_TIMEOUT)
-        port = registry.get_value(settings.PORT_REGISTRY)
-
-        try:
-            # Enable broadcasting mode
-            broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-            # Sends the broadcast
-            broadcaster.sendto(self.message, ("<broadcast>", port))
-
-        except socket.error:
-            logging.error("Unknown error while sending broadcast :(")
-        finally:
-            broadcaster.shutdown(2)
-            broadcaster.close()
+        send_broadcast(self.message)
 
     def receive_message(self):
         try:
