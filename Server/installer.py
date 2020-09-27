@@ -1,5 +1,5 @@
-
 import os
+import sys
 import json
 import zipfile
 import construct
@@ -7,6 +7,8 @@ import argparse
 
 import validators
 from Crypto.PublicKey import RSA
+
+sys.path.append("..")
 
 from Updater import settings
 from Updater import registry
@@ -26,7 +28,7 @@ def load_settings():
     except FileNotFoundError:
         # If settings file is not found, use default settings
         pass
-    return None
+    return dict()
 
 
 def save_settings(values):
@@ -41,8 +43,6 @@ def save_settings(values):
 
 def add_to_settings(values):
     current_settings = load_settings()
-    if current_settings is None:
-        return False
 
     current_settings.update(values)
     return save_settings(current_settings)
@@ -77,23 +77,30 @@ def generate_rsa_keys():
     registry.set_value(settings.RSA_MODULO_REGISTRY, hex(key_pair.n))
     registry.set_value(settings.RSA_PUBLIC_REGISTRY, hex(key_pair.e))
     registry.set_value(settings.RSA_PRIVATE_REGISTRY, hex(key_pair.d))
+
+    # Displays the keys to the user
+    print("RSA keys were generated!")
+    print("")
+    show_rsa_keys()
     return True
 
 
 def show_rsa_keys():
-    print("RSA modulo: (n):")
+    print("RSA Modulo (n):")
     if registry.exists(settings.RSA_MODULO_REGISTRY):
         print(registry.get_value(settings.RSA_MODULO_REGISTRY))
     else:
         print("Not available.")
+    print("")
 
-    print("RSA Public Key: (e)")
+    print("RSA Public Key (e):")
     if registry.exists(settings.RSA_PUBLIC_REGISTRY):
         print(registry.get_value(settings.RSA_PUBLIC_REGISTRY))
     else:
         print("Not available.")
+    print("")
 
-    print("RSA Private Key: (d)")
+    print("RSA Private Key (d):")
     if registry.exists(settings.RSA_PRIVATE_REGISTRY):
         print(registry.get_value(settings.RSA_PRIVATE_REGISTRY))
     else:
@@ -114,8 +121,8 @@ def show_server_information():
     if registry.exists(settings.PORT_REGISTRY):
         port = registry.get_value(settings.PORT_REGISTRY)
 
-    print(f"Address ID: \t{address_id}.")
-    print(f"Domain (IP): \t{ip}.")
+    print(f"Address ID: \t{address_id}")
+    print(f"Domain (IP): \t{ip}")
     print(f"Port: \t\t{port}")
     return True
 
@@ -129,12 +136,15 @@ def send_server_information(ip, port, spread=True):
                 return False
 
     # Validates port number
-    if validators.between.between(ip, min=1, max=65535) is not True:
+    if validators.between(port, min=1, max=65535) is not True:
         print(f"Invalid port number: {port} is not between 1 and 65535")
         return False
 
     if not registry.exists(settings.ADDRESS_ID_REGISTRY):
         print(f"Address ID was not found in the registry! (Location: {settings.ADDRESS_ID_REGISTRY})")
+        return False
+    if not registry.exists(settings.RSA_PRIVATE_REGISTRY):
+        print(f"RSA Private Key was not found in the registry! (Location: {settings.RSA_PRIVATE_REGISTRY})")
         return False
     address_id = registry.get_value(settings.ADDRESS_ID_REGISTRY)
 
@@ -144,7 +154,7 @@ def send_server_information(ip, port, spread=True):
         signature=0,
         address_id=address_id + 1,  # Increases the address id, to indicate the information is new and up to date.
         address_size=len(ip),
-        address=ip,
+        address=ip.encode("ascii"),
         port=port,
         spread=spread
     )
@@ -156,13 +166,14 @@ def send_server_information(ip, port, spread=True):
         # Update signature
         server_update_dict["signature"] = constructs.sign_message(server_update_message)
         server_update_message = constructs.SERVER_UPDATE_MESSAGE.build(server_update_dict)
-    except construct.ConstructError:
+    except construct.ConstructError as e:
         # Should never occur
-        print(f"Failed to build server update message")
+        print(f"Failed to build server update message: {e.args}")
         return False
 
     # Sends server information update (should also update local server information)
     updater.send_broadcast(server_update_message)
+    print("Server information was sent to services!")
     return True
 
 
@@ -306,7 +317,13 @@ def main():
     settings.init_settings(save=False)
 
     # call command function
-    args.func(args)
+    try:
+        func = args.func
+    except AttributeError:
+        print(f"Invalid command. Run with `{sys.argv[0]} -h` for usage.")
+        return
+    del args.func
+    func(**vars(args))
 
 
 if __name__ == "__main__":

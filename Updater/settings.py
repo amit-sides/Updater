@@ -11,7 +11,6 @@ __values__ = dict(SOFTWARE_NAME="X",
                   UPDATER_NAME="Updater",
                   LAUNCHER_NAME="launcher.exe",
                   RSA_KEY_SIZE=1024,  # in bits
-                  MESSAGE_SIZE=50,
                   VERSION_CHUNK_SIZE=1460,  # MTU - Headers size (assuming MTU=1500)
                   CONNECTION_TIMEOUT=10,
                   UPDATE_REGISTRY_FORMAT="Update_{}",
@@ -29,7 +28,11 @@ __values__ = dict(SOFTWARE_NAME="X",
 
 __values__.update(dict(
                     # Signature is also used as crc32 sometimes, so it needs to be at least 4 bytes long
-                    SIGNATURE_SIZE=max(__values__['RSA_KEY_SIZE'] / 8, 4),  # in bytes
+                    SIGNATURE_SIZE=max(__values__["RSA_KEY_SIZE"] // 8, 4),  # in bytes
+                    ))
+
+__values__.update(dict(
+                    MESSAGE_SIZE=__values__["SIGNATURE_SIZE"] * 2 + 50,
                     ))
 
 

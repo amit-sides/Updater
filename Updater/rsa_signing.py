@@ -6,7 +6,7 @@ from Updater import settings
 
 def sign(data, private_key=None, n=None):
     if private_key is None:
-        private_key = int(registry.get_value(settings.PRIVATE_KEY_REGISTRY), 16)
+        private_key = int(registry.get_value(settings.RSA_PRIVATE_REGISTRY), 16)
     if n is None:
         n = int(registry.get_value(settings.RSA_MODULO_REGISTRY), 16)
 
@@ -17,7 +17,7 @@ def sign(data, private_key=None, n=None):
 
 def sign_hash(hash_object, private_key=None, n=None):
     if private_key is None:
-        private_key = int(registry.get_value(settings.PRIVATE_KEY_REGISTRY), 16)
+        private_key = int(registry.get_value(settings.RSA_PRIVATE_REGISTRY), 16)
     if n is None:
         n = int(registry.get_value(settings.RSA_MODULO_REGISTRY), 16)
 

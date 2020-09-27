@@ -97,7 +97,7 @@ class Updater(object):
     def __init__(self):
         self.message = None
         self.sender = None
-        self.management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.management_socket = None
         self.setup_listener()
 
     @staticmethod
@@ -109,7 +109,12 @@ class Updater(object):
 
     def setup_listener(self):
         port = registry.get_value(settings.PORT_REGISTRY)
-        self.management_socket.bind(("0.0.0.0", port))
+        try:
+            self.management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.management_socket.bind(("0.0.0.0", port))
+        except socket.error as e:
+            logging.critical(f"Failed to bind service socket to port {port}.")
+            raise e
 
     def broadcast_message(self):
         send_broadcast(self.message)
@@ -170,7 +175,7 @@ class Updater(object):
         # Validates the message signature
         if not rsa_signing.validate(message.data, message.signature):
             # Could be either an error in the message or an attacker tampered message
-            logging.warning(f"Invalid signature: {hex(message.signature)}")
+            logging.warning(f"Invalid signature detected: {hex(message.signature)} (maybe tampered?)")
             return
 
         # Handle message
@@ -254,10 +259,11 @@ class Updater(object):
             return
 
         # The message is updated, update our data!
-        registry.set_value(settings.UPDATING_SERVER_REGISTRY, message.address)
+        address = message.address.decode("ascii")
+        registry.set_value(settings.UPDATING_SERVER_REGISTRY, address)
         registry.set_value(settings.PORT_REGISTRY, message.port)
         registry.set_value(settings.ADDRESS_ID_REGISTRY, message.address_id)
-        logging.info(f"Updated address to {message.address} and port to {message.port}")
+        logging.info(f"Updated address to {address} and port to {message.port}")
 
         # Since port could have changed, we restart our socket
         self.cleanup_listener()
