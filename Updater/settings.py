@@ -98,7 +98,7 @@ def save_settings():
             data = json.dumps(__values__)
             settings_file.write(data)
     except PermissionError:
-        logging.critical(f"Failed to write settings file due to PermissionError: {__values__['SETTINGS_PATH']}")
+        logging.critical(f"Failed to write settings file due to PermissionError: {__values__['SETTINGS_PATH']}", exc_info=True)
 
 
 def __getattr__(name):

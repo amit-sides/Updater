@@ -49,7 +49,7 @@ SERVER_UPDATE_MESSAGE =     construct.FixedSized(settings.MESSAGE_SIZE,
 REQUEST_VERSION_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
                                 construct.Struct(
                                     "type"              / construct.Const(MessageType.REQUEST_VERSION.value, construct.Byte),
-                                    "crc32"             / construct.Int32ub,
+                                    "crc32"             / construct.BytesInteger(settings.SIGNATURE_SIZE),
                                     "listening_port"    / construct.Int16ub,
                                     "major"             / construct.Int16ub,
                                     "minor"             / construct.Int16ub,
@@ -58,7 +58,7 @@ REQUEST_VERSION_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
 REQUEST_UPDATE_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
                                 construct.Struct(
                                     "type"              / construct.Const(MessageType.REQUEST_UPDATE.value, construct.Byte),
-                                    "crc32"             / construct.Int32ub,
+                                    "crc32"             / construct.BytesInteger(settings.SIGNATURE_SIZE),
                                 ))
 
 

@@ -193,11 +193,14 @@ def create_update(update_path, major, minor):
     with update_file:
         update_zip = zipfile.ZipFile(update_file, "w")
         zip_directory(update_path, update_zip)
+        update_zip.close()
 
     # Updating registry with update info
     version_registry = version.get_update_registry_path()
     registry.set_value(version_registry, os.path.abspath(update_filepath))
     version.update_current_version()
+
+    print(f"Created update version {version} successfully!")
     return True
 
 
@@ -240,11 +243,11 @@ def broadcast_update_version(spread=True):
 
     # Calculate signature of message
     try:
-        version_update_message = constructs.REQUEST_UPDATE_MESSAGE.build(version_update_dict)
+        version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
 
         # Update signature
         version_update_dict["header_signature"] = constructs.sign_message(version_update_message)
-        version_update_message = constructs.REQUEST_UPDATE_MESSAGE.build(version_update_dict)
+        version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
     except construct.ConstructError:
         # Should never occur
         print(f"Failed to build request update message")
@@ -253,6 +256,7 @@ def broadcast_update_version(spread=True):
     # Sends the message
     updater.send_broadcast(version_update_message)
     # After the update is announced, the service will send it to the clients, when they ask for it
+    print(f"Broadcast was sent with version {update_version} !")
     return True
 
 
