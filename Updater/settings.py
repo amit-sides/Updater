@@ -13,7 +13,6 @@ __values__ = dict(SOFTWARE_NAME="X",
                   RSA_KEY_SIZE=1024,  # in bits
                   VERSION_CHUNK_SIZE=1460,  # MTU - Headers size (assuming MTU=1500)
                   CONNECTION_TIMEOUT=10,
-                  UPDATE_REGISTRY_FORMAT="Update_{}",
 
                   # Default registry values
                   AUTO_INSTALLATIONS=0,
@@ -71,6 +70,7 @@ def init_settings(save=True):
         VERSION_MAJOR_REGISTRY=rf"{__values__['REGISTRY_PATH']}\version_major",
         VERSION_MINOR_REGISTRY=rf"{__values__['REGISTRY_PATH']}\version_minor",
         ADDRESS_ID_REGISTRY=rf"{__values__['REGISTRY_PATH']}\address_id",
+        UPDATE_REGISTRY_FORMAT=rf"{__values__['REGISTRY_PATH']}\Update_{{}}",
     ))
 
     load_settings()

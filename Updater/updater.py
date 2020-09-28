@@ -165,6 +165,7 @@ class Updater(object):
             if message_type == MessageType.REQUEST_VERSION:
                 update_sender = threading.Thread(target=Updater.send_version_update, args=(self.message, self.sender))
                 update_sender.setDaemon(True)
+                logging.info(f"Sending update on another thread to {self.sender[0]}")
                 update_sender.start()
             elif message_type == MessageType.REQUEST_UPDATE and Updater.is_server():
                 # Only the server answers to MessageType.REQUEST_UPDATE
@@ -350,6 +351,7 @@ class Updater(object):
             hash_object = settings.HASH_MODULE()
 
             # Download the update
+            logging.info(f"Downloading update of version {requested_version}")
             with update_file:
                 while data_received < message.size:
                     chunk = receiver.recv(settings.VERSION_CHUNK_SIZE)
@@ -428,9 +430,11 @@ class Updater(object):
             # Send the update file
             with update_file:
                 chunk = update_file.read(settings.VERSION_CHUNK_SIZE)
-                while chunk != "":
+                while len(chunk) != 0:
                     sender.send(chunk)
                     chunk = update_file.read(settings.VERSION_CHUNK_SIZE)
+
+            logging.info(f"Finished sending update of version {requested_version}")
 
         except socket.timeout:
             # Connection was timed-out, too bad... abort
