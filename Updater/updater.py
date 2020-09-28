@@ -5,7 +5,9 @@ import socket
 import construct
 import zlib
 import threading
-import shutil
+import ipaddress
+
+import netifaces
 
 from Updater import constructs
 from Updater.constructs import MessageType
@@ -14,7 +16,37 @@ from Updater import settings
 from Updater import registry
 
 
-def send_broadcast(message):
+def get_all_broadcast_address(sender=None):
+    broadcasts = []
+
+    for interface in netifaces.interfaces():
+        interface = netifaces.ifaddresses(interface)
+        if netifaces.AF_INET not in interface:
+            continue
+
+        for address in interface[netifaces.AF_INET]:
+            if "addr" not in address or "netmask" not in address:
+                continue
+
+            interface_network = ipaddress.ip_interface(address["addr"] + "/" + address["netmask"]).network
+            if interface_network.is_loopback:
+                # We skip loop-back interfaces
+                continue
+
+            if sender:
+                # If sender is given, exclude it from the broadcasting list
+                sender_address = ipaddress.ip_address(sender)
+                if sender_address in interface_network:
+                    # We skip this network since our sender already sent a broadcast to it
+                    continue
+
+            broadcast = interface_network.broadcast_address.compressed
+            broadcasts.append(broadcast)
+
+    return broadcasts
+
+
+def send_broadcast(message, sender=None):
     broadcaster = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     broadcaster.settimeout(settings.CONNECTION_TIMEOUT)
     port = registry.get_value(settings.PORT_REGISTRY)
@@ -24,12 +56,13 @@ def send_broadcast(message):
         broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         # Sends the broadcast
-        broadcaster.sendto(message, ("<broadcast>", port))
+        for broadcast_address in get_all_broadcast_address(sender):
+            logging.info(f"Sending broadcast to {broadcast_address}")
+            broadcaster.sendto(message, (broadcast_address, port))
 
     except socket.error:
         logging.error("Unknown error while sending broadcast :(", exc_info=True)
     finally:
-        broadcaster.shutdown(2)
         broadcaster.close()
 
 
@@ -117,7 +150,8 @@ class Updater(object):
             raise e
 
     def broadcast_message(self):
-        send_broadcast(self.message)
+        sender = self.sender[0] if self.sender else None
+        send_broadcast(self.message, sender=sender)
 
     def receive_message(self):
         try:
@@ -259,6 +293,10 @@ class Updater(object):
             logging.info(f"Received an outdated server update message. current id: {current_id}, received id: {message.address_id}.")
             return
 
+        # Checks if the sender requested to spread this message using broadcast
+        if message.spread:
+            self.broadcast_message()
+
         # The message is updated, update our data!
         address = message.address.decode("ascii")
         registry.set_value(settings.UPDATING_SERVER_REGISTRY, address)
@@ -269,10 +307,6 @@ class Updater(object):
         # Since port could have changed, we restart our socket
         self.cleanup_listener()
         self.setup_listener()
-
-        # Checks if the sender requested to spread this message using broadcast
-        if message.spread:
-            self.broadcast_message()
 
     def handle_version_update(self):
         if len(self.message) != constructs.VERSION_UPDATE_MESSAGE.sizeof():

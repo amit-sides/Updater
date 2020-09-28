@@ -40,7 +40,7 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
     def setup_logger():
         logger_filepath = settings.LOGGER_PATH
         logging.basicConfig(filename=logger_filepath, level=logging.DEBUG, 
-                            format="%(asctime)-19s [%(levelname)-8s] %(funcName)-20s | %(message)s",
+                            format="%(asctime)-19s [%(levelname)-8s] %(funcName)-21s | %(message)s",
                             datefmt="%d.%m.%Y %H:%M:%S")
 
     @staticmethod

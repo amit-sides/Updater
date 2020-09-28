@@ -247,6 +247,7 @@ def broadcast_update_version(spread=True):
 
         # Update signature
         version_update_dict["header_signature"] = constructs.sign_message(version_update_message)
+        print(f"Spread: {version_update_dict['spread']}")
         version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
     except construct.ConstructError:
         # Should never occur
