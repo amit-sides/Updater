@@ -4,6 +4,7 @@ import json
 import logging
 
 PROGRAM_FILES = os.environ["ProgramFiles"]
+INITIAL_SETTINGS_PATH = f"{os.path.dirname(os.path.abspath(__file__))}{os.path.sep}settings.json"
 HASH_MODULE = hashlib.sha512
 
 __values__ = dict(SOFTWARE_NAME="X",
@@ -69,9 +70,10 @@ def init_settings(save=True):
 
 def load_settings():
     global __values__
+    settings_path = __values__["SETTINGS_PATH"] if "SETTINGS_PATH" in __values__ else INITIAL_SETTINGS_PATH
 
     try:
-        with open(__values__['SETTINGS_PATH'], "r") as settings_file:
+        with open(settings_path, "r") as settings_file:
             data = settings_file.read()
             __values__.update(json.loads(data))
     except FileNotFoundError:
@@ -81,9 +83,10 @@ def load_settings():
 
 def save_settings():
     global __values__
+    settings_path = __values__["SETTINGS_PATH"] if "SETTINGS_PATH" in __values__ else INITIAL_SETTINGS_PATH
 
     try:
-        with open(__values__['SETTINGS_PATH'], "w") as settings_file:
+        with open(settings_path, "w") as settings_file:
             data = json.dumps(__values__)
             settings_file.write(data)
     except PermissionError:
