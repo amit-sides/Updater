@@ -201,9 +201,12 @@ class Updater(object):
                 update_sender.setDaemon(True)
                 logging.info(f"Sending update on another thread to {self.sender[0]}")
                 update_sender.start()
-            elif message_type == MessageType.REQUEST_UPDATE and Updater.is_server():
-                # Only the server answers to MessageType.REQUEST_UPDATE
-                self.handle_request_update()
+            elif message_type == MessageType.REQUEST_UPDATE:
+                if Updater.is_server():
+                    # Only the server answers to MessageType.REQUEST_UPDATE
+                    self.handle_request_update()
+                else:
+                    logging.info("A client requested a version from this non-server service.")
 
             return
 
@@ -238,6 +241,7 @@ class Updater(object):
             while bytes_read < update_size:
                 data = update.read(settings.VERSION_CHUNK_SIZE)
                 hash_object.update(data)
+                bytes_read += len(data)
 
         version_update_dict = dict(
             type=MessageType.VERSION_UPDATE,
@@ -253,7 +257,7 @@ class Updater(object):
 
             # Update signature
             version_update_dict["header_signature"] = constructs.sign_message(version_update_message)
-            version_update_message = constructs.REQUEST_UPDATE_MESSAGE.build(version_update_dict)
+            version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
         except construct.ConstructError:
             # Should never occur
             logging.critical(f"Failed to build version update message", exc_info=True)
@@ -266,6 +270,7 @@ class Updater(object):
         try:
             # Sends the message
             sender.sendto(version_update_message, (self.sender[0], port))
+            logging.info(f"Sent version {current_version} to {self.sender[0]}.")
         except socket.error:
             logging.error("Unknown error while sending update message :(", exc_info=True)
         finally:

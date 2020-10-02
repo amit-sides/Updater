@@ -3,6 +3,8 @@ import hashlib
 import json
 import logging
 
+from Updater import registry
+
 PROGRAM_FILES = os.environ["ProgramFiles"]
 INITIAL_SETTINGS_PATH = f"{os.path.dirname(os.path.abspath(__file__))}{os.path.sep}settings.json"
 HASH_MODULE = hashlib.sha512
@@ -39,13 +41,18 @@ __values__.update(dict(
 def init_settings(save=True):
     global __values__
 
+    # Default settings that are needed before load
+    __values__.setdefault("REGISTRY_PATH", rf"Software\{__values__['SOFTWARE_NAME']}\{__values__['UPDATER_NAME']}")
+    __values__.setdefault("SETTINGS_REGISTRY", rf"{__values__['REGISTRY_PATH']}\settings")
+
     # Load existing settings
     load_settings()
 
     # Setting default settings values, if they don't appear in the settings.json file already
-    __values__.setdefault("REGISTRY_PATH", rf"Software\{__values__['SOFTWARE_NAME']}\{__values__['UPDATER_NAME']}")
+
     __values__.setdefault("SOFTWARE_PATH", rf"{PROGRAM_FILES}{os.path.sep}{__values__['SOFTWARE_NAME']}")
     __values__.setdefault("UPDATER_PATH", rf"{__values__['SOFTWARE_PATH']}{os.path.sep}{__values__['UPDATER_NAME']}")
+    __values__.setdefault("PROGRAM_PATH", rf"{__values__['SOFTWARE_PATH']}{os.path.sep}{__values__['SOFTWARE_NAME']}")
     __values__.setdefault("LAUNCHER_PATH", rf"{__values__['SOFTWARE_PATH']}{os.path.sep}{__values__['LAUNCHER_NAME']}")
     __values__.setdefault("SETTINGS_PATH", rf"{__values__['UPDATER_PATH']}{os.path.sep}settings.json")
     __values__.setdefault("LOGGER_PATH", rf"{__values__['UPDATER_PATH']}{os.path.sep}log.txt")
@@ -70,7 +77,10 @@ def init_settings(save=True):
 
 def load_settings():
     global __values__
-    settings_path = __values__["SETTINGS_PATH"] if "SETTINGS_PATH" in __values__ else INITIAL_SETTINGS_PATH
+    if "SETTINGS_REGISTRY" in __values__ and registry.exists(__values__["SETTINGS_REGISTRY"]):
+        settings_path = registry.get_value(__values__["SETTINGS_REGISTRY"])
+    else:
+        settings_path = __values__["SETTINGS_PATH"] if "SETTINGS_PATH" in __values__ else INITIAL_SETTINGS_PATH
 
     try:
         with open(settings_path, "r") as settings_file:
@@ -83,7 +93,10 @@ def load_settings():
 
 def save_settings():
     global __values__
-    settings_path = __values__["SETTINGS_PATH"] if "SETTINGS_PATH" in __values__ else INITIAL_SETTINGS_PATH
+    if "SETTINGS_REGISTRY" in __values__ and registry.exists(__values__["SETTINGS_REGISTRY"]):
+        settings_path = registry.get_value(__values__["SETTINGS_REGISTRY"])
+    else:
+        settings_path = __values__["SETTINGS_PATH"] if "SETTINGS_PATH" in __values__ else INITIAL_SETTINGS_PATH
 
     try:
         with open(settings_path, "w") as settings_file:

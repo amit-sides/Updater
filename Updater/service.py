@@ -67,6 +67,8 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
             registry.set_value(settings.VERSION_MINOR_REGISTRY, settings.VERSION_MINOR)
         if not registry.exists(settings.ADDRESS_ID_REGISTRY):
             registry.set_value(settings.ADDRESS_ID_REGISTRY, settings.ADDRESS_ID)
+        if not registry.exists(settings.SETTINGS_REGISTRY):
+            registry.set_value(settings.SETTINGS_REGISTRY, settings.SETTINGS_PATH)
 
     @staticmethod
     def init():
