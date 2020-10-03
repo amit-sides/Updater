@@ -3,3 +3,4 @@ pycryptodome
 construct
 servicemanager
 netifaces
+cx-freeze==6.1

@@ -8,7 +8,15 @@ import servicemanager
 import logging
 
 # Adds .. to path - The service runs from python's directory so this is the only good way doing it
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if getattr(sys, 'frozen', False):
+    # frozen
+    current_dir = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    # unfrozen
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+print(current_dir)
+print(os.path.dirname(current_dir))
+sys.path.append(os.path.dirname(current_dir))
 
 from Updater import settings
 from Updater import registry
