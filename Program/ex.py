@@ -1,0 +1,14 @@
+import PySimpleGUI as sg
+
+def main():
+    sg.theme('DarkAmber')
+    
+    with open("text.txt", "r") as f:
+        info = f.read()
+    
+    sg.popup("Exm", info)
+    
+    pass
+
+if __name__ == "__main__":
+    main()

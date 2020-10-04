@@ -8,15 +8,7 @@ import servicemanager
 import logging
 
 # Adds .. to path - The service runs from python's directory so this is the only good way doing it
-if getattr(sys, 'frozen', False):
-    # frozen
-    current_dir = os.path.dirname(os.path.abspath(sys.executable))
-else:
-    # unfrozen
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-print(current_dir)
-print(os.path.dirname(current_dir))
-sys.path.append(os.path.dirname(current_dir))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from Updater import settings
 from Updater import registry
@@ -139,4 +131,9 @@ class UpdaterServerSvc(win32serviceutil.ServiceFramework):
 
 
 if __name__ == '__main__':
-    win32serviceutil.HandleCommandLine(UpdaterServerSvc)
+    if len(sys.argv) == 1:
+        servicemanager.Initialize()
+        servicemanager.PrepareToHostSingle(UpdaterServerSvc)
+        servicemanager.StartServiceCtrlDispatcher()
+    else:
+        win32serviceutil.HandleCommandLine(UpdaterServerSvc)

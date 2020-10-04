@@ -4,3 +4,4 @@ construct
 servicemanager
 validators
 netifaces
+colorama

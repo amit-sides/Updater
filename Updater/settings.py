@@ -1,16 +1,24 @@
 import os
+import sys
 import hashlib
 import json
 import logging
 
 from Updater import registry
 
+if getattr(sys, 'frozen', False):
+    # frozen
+    CURRENT_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    # unfrozen
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+INITIAL_SETTINGS_PATH = f"{CURRENT_DIR}{os.path.sep}settings.json"
 PROGRAM_FILES = os.environ["ProgramFiles"]
-INITIAL_SETTINGS_PATH = f"{os.path.dirname(os.path.abspath(__file__))}{os.path.sep}settings.json"
 HASH_MODULE = hashlib.sha512
 
 __values__ = dict(SOFTWARE_NAME="X",
-                  PROGRAM="ex.exe",
+                  PROGRAM="X.exe",
                   UPDATER_NAME="Updater",
                   LAUNCHER_NAME="launcher.exe",
                   RSA_KEY_SIZE=1024,  # in bits
@@ -38,7 +46,7 @@ __values__.update(dict(
                     ))
 
 
-def init_settings(save=True):
+def init_settings(save=True, load=True):
     global __values__
 
     # Default settings that are needed before load
@@ -46,7 +54,8 @@ def init_settings(save=True):
     __values__.setdefault("SETTINGS_REGISTRY", rf"{__values__['REGISTRY_PATH']}\settings")
 
     # Load existing settings
-    load_settings()
+    if load:
+        load_settings()
 
     # Setting default settings values, if they don't appear in the settings.json file already
 

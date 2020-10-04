@@ -4,8 +4,12 @@ import json
 import zipfile
 import construct
 import argparse
+import subprocess
+import shutil
+import importlib
 
 import validators
+import colorama
 from Crypto.PublicKey import RSA
 
 sys.path.append("..")
@@ -18,6 +22,13 @@ from Updater import constructs
 from Updater.constructs import MessageType
 
 DEFAULT_SETTINGS_PATH = "settings.json"
+BUILD_DIRECTORY = "build"
+SERVICE_EXECUTABLE = "service.exe"
+LAUNCHER_EXECUTABLE = "launcher.exe"
+PYINSTALLER_OUTPUT_DIR = "dist"
+INSTALLER_SETUP_SCRIPT = "setup_script.iss"
+INSTALLER_SETUP_TEMPLATE = "setup_template.iss"
+INNO_SETUP_COMPILER = r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 
 def load_settings():
@@ -61,7 +72,7 @@ def zip_directory(path, zip_handler):
             zip_handler.write(dir_path, relative_path)
 
 
-def generate_rsa_keys():
+def generate_rsa_keys(display_keys=True):
     key_pair = RSA.generate(bits=settings.RSA_KEY_SIZE)
 
     # Adds the keys to settings file
@@ -74,6 +85,8 @@ def generate_rsa_keys():
         return False
 
     # Adds the keys to registry
+    if not registry.exists(settings.REGISTRY_PATH):
+        registry.create_key(settings.REGISTRY_PATH)
     registry.set_value(settings.RSA_MODULO_REGISTRY, hex(key_pair.n))
     registry.set_value(settings.RSA_PUBLIC_REGISTRY, hex(key_pair.e))
     registry.set_value(settings.RSA_PRIVATE_REGISTRY, hex(key_pair.d))
@@ -81,7 +94,8 @@ def generate_rsa_keys():
     # Displays the keys to the user
     print("RSA keys were generated!")
     print("")
-    show_rsa_keys()
+    if display_keys:
+        show_rsa_keys()
     return True
 
 
@@ -261,6 +275,124 @@ def broadcast_update_version(spread=True):
     return True
 
 
+def execute_program(program, script, parameters="", **kwargs):
+    command = f"{program} {parameters} {script}"
+    print(f"Executing: {command}" + colorama.Fore.LIGHTBLUE_EX)
+    result = subprocess.call(command, **kwargs)
+    print(colorama.Fore.RESET)
+    return result == 0
+
+
+def clean_installer():
+    # Delete all registry keys
+
+    # Delete settings file
+
+    # Delete all setup file
+    pass
+
+
+def create_installer(program_name, major, minor, software_path, updater_path, launcher_path, ip, port):
+    # Validate server, port
+    # Validates the ip or domain (syntax only)
+    if validators.domain(ip) is not True:
+        if validators.ip_address.ipv4(ip) is not True:
+            if validators.ip_address.ipv6(ip) is not True:
+                print(f"Failed to validate ip or domain: {ip}. Check for typing mistakes.")
+                return False
+
+    # Validates port number
+    if validators.between(port, min=1, max=65535) is not True:
+        print(f"Invalid port number: {port} is not between 1 and 65535")
+        return False
+
+    # Save software name, program name, major, minor, ip, port to settings
+    program_settings = dict(
+        SOFTWARE_NAME=program_name,
+        PROGRAM=f"{program_name}.exe",
+        UPDATING_SERVER=ip,
+        PORT=port,
+        UPDATE_MAJOR=major,
+        UPDATE_MINOR=minor,
+        VERSION_MAJOR=major,
+        VERSION_MINOR=minor,
+    )
+    importlib.reload(settings)
+    settings.__values__.update(program_settings)
+    settings.init_settings(save=False, load=False)
+
+    if not add_to_settings(program_settings):
+        print(f"Failed to write settings file {DEFAULT_SETTINGS_PATH}")
+        return False
+    print("Created new settings file!\n")
+
+    # Generate RSA keys and add to settings/registry
+    generate_rsa_keys(display_keys=False)
+
+    # Create build directory
+    if not os.path.isdir(BUILD_DIRECTORY):
+        os.mkdir(BUILD_DIRECTORY)
+
+    # Run pyinstaller for updater and copy executable to build directory (Create folder as well)
+    service_folder = os.path.join(BUILD_DIRECTORY, "Updater")
+    if not os.path.isdir(service_folder):
+        os.mkdir(service_folder)
+    service_script = SERVICE_EXECUTABLE.replace(".exe", ".py")
+    if not execute_program("pyinstaller", os.path.join(updater_path, service_script), r"--hidden-import win32timezone --onefile", cwd=updater_path):
+        print(f"Failed to run pyinstaller for {updater_path}")
+        return False
+    shutil.copyfile(os.path.join(updater_path, PYINSTALLER_OUTPUT_DIR, SERVICE_EXECUTABLE),
+                    os.path.join(service_folder, SERVICE_EXECUTABLE))
+    print("Built service successfully!\n")
+
+    # Run pyinstaller for launcher and copy executable to build directory
+    launcher_script = LAUNCHER_EXECUTABLE.replace(".exe", ".py")
+    if not execute_program("pyinstaller", os.path.join(launcher_path, launcher_script), r"-p ..\ --onefile -w", cwd=launcher_path):
+        print(f"Failed to run pyinstaller for {launcher_path}")
+        return False
+    shutil.copyfile(os.path.join(launcher_path, PYINSTALLER_OUTPUT_DIR, LAUNCHER_EXECUTABLE),
+                    os.path.join(BUILD_DIRECTORY, LAUNCHER_EXECUTABLE))
+    print("Built launcher successfully!\n")
+
+    # Copy files for program_path to build directory
+    program_folder = os.path.join(BUILD_DIRECTORY, program_name)
+    if not os.path.isdir(program_folder):
+        os.mkdir(program_folder)
+    shutil.copytree(software_path, program_folder, dirs_exist_ok=True)
+    print("Copied program files to build directory.\n")
+
+    # Copy settings file to build directory
+    settings_filename = os.path.basename(DEFAULT_SETTINGS_PATH)
+    shutil.copyfile(DEFAULT_SETTINGS_PATH, os.path.join(service_folder, settings_filename))
+    print("Copied settings file to build directory.\n")
+
+    # Create Inno Setup Script using template
+    inno_setup_script_parameters = f"""
+        #define MyAppName "{program_name}"
+        #define MyAppVersion "{major}.{minor}"
+        #define UpdaterFolder "Updater"
+        #define SettingsFile "{settings_filename}"
+        #define LauncherName "{LAUNCHER_EXECUTABLE}"
+        #define ServiceName "{SERVICE_EXECUTABLE}"
+        #define BuildDir "{BUILD_DIRECTORY}"
+    """
+    with open(INSTALLER_SETUP_TEMPLATE, "r") as setup_template:
+        template = setup_template.read()
+    with open(INSTALLER_SETUP_SCRIPT, "w") as setup_script:
+        setup_script.write(inno_setup_script_parameters)
+        setup_script.write(template)
+    print("Created Inno Setup script for installer!")
+
+    # Compile script and create setup
+    if not execute_program(INNO_SETUP_COMPILER, INSTALLER_SETUP_SCRIPT):
+        print(f"Failed to compile setup script {INSTALLER_SETUP_SCRIPT}")
+        return False
+    print("Compiled setup script successfully!")
+    print("Created installer in Output folder!")
+
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -269,6 +401,7 @@ def main():
     rsa_group = subparsers.add_parser("rsa")
     update_group = subparsers.add_parser("update")
     server_group = subparsers.add_parser("server")
+    setup_group = subparsers.add_parser("setup")
 
     # Sub-commands of rsa
 
@@ -315,10 +448,38 @@ def main():
                                help="Sets 'spread' bit flag in broadcast message, will tell other clients to forward this message.")
     server_update.set_defaults(func=send_server_information)
 
+    # Sub-commands of setup
+
+    subparsers = setup_group.add_subparsers()
+    # create
+    setup_create = subparsers.add_parser("create")
+    setup_create.add_argument("program_name", metavar="<Program Name>", type=str,
+                              help=r"The program's executable name. Needs to be stored at <Program Folder>\<Program Name>.exe")
+    setup_create.add_argument("major", metavar="<major>", type=int,
+                              help="The major number of the version.")
+    setup_create.add_argument("minor", metavar="<minor>", type=int,
+                              help="The minor number of the version.")
+    setup_create.add_argument("-s", "--software_path", metavar="[Path to Software Folder]", type=str, default=r"..\Program",
+                              help=r"The path to the software folder. Defaults to ..\Program")
+    setup_create.add_argument("-u", "--updater_path", metavar="[Path to Updater Folder]", type=str, default=r"..\Updater",
+                              help=r"The path to the updater folder.  Defaults to ..\Updater")
+    setup_create.add_argument("-l", "--launcher_path", metavar="[Path to Launcher Folder]", type=str, default=r"..\Launcher",
+                              help=r"The path to the launcher folder.  Defaults to ..\Launcher")
+    setup_create.add_argument("-i", "--ip", metavar="[Updating Server Address]", type=str, default=r"127.0.0.1",
+                              help=r"The IP address or domain of the update server.  Defaults to 127.0.0.1")
+    setup_create.add_argument("-p", "--port", metavar="[Updating Server Port]", type=int, default=r"55555",
+                              help=r"The port of the update service. Defaults to 55555")
+    setup_create.set_defaults(func=create_installer)
+    # clean
+    setup_clean = subparsers.add_parser("clean")
+    setup_clean.set_defaults(func=clean_installer)
+
     # Parse everything
     args = parser.parse_args()
 
     # Initialize settings
+    installer_settings = load_settings()
+    settings.__values__.update(installer_settings)
     settings.init_settings(save=False)
 
     # call command function
@@ -333,5 +494,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
