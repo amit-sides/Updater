@@ -46,7 +46,10 @@ All the messages supported by the service can be found at `messages.py`. They ar
 
 ## Usage
 
-1. Firstly, update the settings in `settings.py` in the declaration of the variable `__values__` according to the information about your program (for example: SOFTWARE_NAME, PROGRAM, UPDATING_SERVER, ...)
+* Firstly, you should know that unless you want to change the code and test it, you probably wouldn't need to run the script. Instead, you should use the **installer** to create a `setup.exe` file, and the setup should run the service on both the server and the client's computers.
+  * If you know what you are doing and wish to play with the code, you should follow the steps below to help you run it.
+
+1. Update the settings in `settings.py` in the declaration of the variable `__values__` according to the information about your program (for example: SOFTWARE_NAME, PROGRAM, UPDATING_SERVER, ...)
 
    * You don't have to change everything, but make sure the values corresponds to your program and server (valid PROGRAM name, valid IP for UPDATING_SERVER, available port, etc...)
 
