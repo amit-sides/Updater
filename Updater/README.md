@@ -28,7 +28,7 @@ All the messages supported by the service can be found at `messages.py`. They ar
 
 ## Setup
 
-1. Install python 3, if you don't have it already
+1. Install python 3 and pip, if you don't have it already.
 
 2. TODO: Install Build Tools?
 
