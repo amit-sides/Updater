@@ -2,4 +2,4 @@ pywin32
 pycryptodome
 construct
 netifaces
-cx-freeze==6.1
+pyinstaller

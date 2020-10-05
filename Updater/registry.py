@@ -2,8 +2,6 @@
 import os
 import winreg
 
-from Updater import settings
-
 
 def create_key(path):
     registry_key = winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, path)
@@ -20,6 +18,20 @@ def key_exists(path):
     finally:
         if registry_key:
             winreg.CloseKey(registry_key)
+
+
+def delete_key_recursive(path):
+    keys = get_all_sub_keys(path)
+    for key in keys:
+        key_path = rf"{path}\{key}"
+        delete_key_recursive(key_path)
+
+    values = get_all_sub_values(path)
+    for value in values:
+        value_path = rf"{path}\{value}"
+        delete(value_path)
+
+    winreg.DeleteKey(winreg.HKEY_LOCAL_MACHINE, path)
 
 
 def exists(path):
@@ -52,6 +64,19 @@ def get_all_sub_values(path):
     items = []
     for i in range(items_count):
         item = winreg.EnumValue(registry_key, i)[0]
+        items.append(item)
+
+    winreg.CloseKey(registry_key)
+    return items
+
+
+def get_all_sub_keys(path):
+    registry_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_READ)
+    items_count = winreg.QueryInfoKey(registry_key)[0]
+
+    items = []
+    for i in range(items_count):
+        item = winreg.EnumKey(registry_key, i)[0]
         items.append(item)
 
     winreg.CloseKey(registry_key)

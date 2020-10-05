@@ -17,8 +17,8 @@ INITIAL_SETTINGS_PATH = f"{CURRENT_DIR}{os.path.sep}settings.json"
 PROGRAM_FILES = os.environ["ProgramFiles"]
 HASH_MODULE = hashlib.sha512
 
-__values__ = dict(SOFTWARE_NAME="X",
-                  PROGRAM="X.exe",
+__values__ = dict(SOFTWARE_NAME="Ex",
+                  PROGRAM="ex.exe",
                   UPDATER_NAME="Updater",
                   LAUNCHER_NAME="launcher.exe",
                   RSA_KEY_SIZE=1024,  # in bits
@@ -52,6 +52,11 @@ def init_settings(save=True, load=True):
     # Default settings that are needed before load
     __values__.setdefault("REGISTRY_PATH", rf"Software\{__values__['SOFTWARE_NAME']}\{__values__['UPDATER_NAME']}")
     __values__.setdefault("SETTINGS_REGISTRY", rf"{__values__['REGISTRY_PATH']}\settings")
+
+    if registry.exists(__values__['SETTINGS_REGISTRY']):
+        settings_path = registry.get_value(__values__['SETTINGS_REGISTRY'])
+        software_path = os.path.dirname(os.path.dirname(settings_path))
+        __values__['SOFTWARE_PATH'] = software_path
 
     # Load existing settings
     if load:

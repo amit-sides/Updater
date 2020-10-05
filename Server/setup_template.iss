@@ -34,11 +34,11 @@ Source: "{#BuildDir}\{#MyAppName}\*";	                DestDir: "{app}\{#MyAppNam
 Name: "{commondesktop}\{#MyAppName}";	Filename: "{app}\{#LauncherName}";	Tasks: desktopicon
 
 [Registry]
-Root: HKLM; Subkey: "Software\{#MyAppName}";            Flags: noerror uninsdeletekey
-Root: HKLM; Subkey: "Software\{#MyAppName}\Updater";    Flags: noerror
-Root: HKLM; Subkey: "Software\{#MyAppName}\Updater";    ValueType: string; ValueName: "settings"; \
+Root: HKLM64; Subkey: "Software\{#MyAppName}";            Flags: noerror uninsdeletekey
+Root: HKLM64; Subkey: "Software\{#MyAppName}\Updater";    Flags: noerror
+Root: HKLM64; Subkey: "Software\{#MyAppName}\Updater";    ValueType: string; ValueName: "settings"; \
 			ValueData: "{app}\{#UpdaterFolder}\{#SettingsFile}"; Flags: noerror
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"; \
+Root: HKLM64; Subkey: "SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"; \
 			ValueType: String; ValueName: "{app}\{#LauncherName}"; ValueData: "RUNASADMIN"; \
 			Flags: uninsdeletevalue;
 

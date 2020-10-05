@@ -1,7 +1,6 @@
 pywin32
 pycryptodome
 construct
-servicemanager
 validators
 netifaces
 colorama

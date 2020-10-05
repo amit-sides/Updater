@@ -285,10 +285,41 @@ def execute_program(program, script, parameters="", **kwargs):
 
 def clean_installer():
     # Delete all registry keys
+    if registry.key_exists(settings.REGISTRY_PATH):
+        registry.delete_key_recursive(settings.REGISTRY_PATH)
+        print(f"Deleted registry key {settings.REGISTRY_PATH} successfully!")
 
     # Delete settings file
+    if os.path.exists(DEFAULT_SETTINGS_PATH):
+        os.remove(DEFAULT_SETTINGS_PATH)
+        print(f"Deleted {DEFAULT_SETTINGS_PATH} successfully!")
 
     # Delete all setup file
+
+    # Updater
+    if os.path.isdir(r"..\Updater\build"):
+        shutil.rmtree(r"..\Updater\build")
+    if os.path.isdir(r"..\Updater\dist"):
+        shutil.rmtree(r"..\Updater\dist")
+    if os.path.exists(r"..\Updater\service.spec"):
+        os.remove(r"..\Updater\service.spec")
+
+    # Launcher
+    if os.path.isdir(r"..\Launcher\build"):
+        shutil.rmtree(r"..\Launcher\build")
+    if os.path.isdir(r"..\Launcher\dist"):
+        shutil.rmtree(r"..\Launcher\dist")
+    if os.path.exists(r"..\Launcher\launcher.spec"):
+        os.remove(r"..\Launcher\launcher.spec")
+
+    # Server
+    if os.path.exists(INSTALLER_SETUP_SCRIPT):
+        os.remove(INSTALLER_SETUP_SCRIPT)
+    if os.path.isdir(BUILD_DIRECTORY):
+        shutil.rmtree(BUILD_DIRECTORY)
+    if os.path.isdir("Output"):
+        shutil.rmtree("Output")
+
     pass
 
 
@@ -308,7 +339,7 @@ def create_installer(program_name, major, minor, software_path, updater_path, la
 
     # Save software name, program name, major, minor, ip, port to settings
     program_settings = dict(
-        SOFTWARE_NAME=program_name,
+        SOFTWARE_NAME=program_name.capitalize(),
         PROGRAM=f"{program_name}.exe",
         UPDATING_SERVER=ip,
         PORT=port,
