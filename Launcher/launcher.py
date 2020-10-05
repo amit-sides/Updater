@@ -11,7 +11,7 @@ import PySimpleGUI as sg
 sys.path.append("..")
 
 from Updater import settings
-from Updater import constructs
+from Updater import messages
 from Updater import registry
 from Updater import updater
 
@@ -132,14 +132,14 @@ def update(update_file_path, silent):
 def query_server():
     # Builds the request update message
     request_update_dict = dict(
-        type=constructs.MessageType.REQUEST_UPDATE,
+        type=messages.MessageType.REQUEST_UPDATE,
         crc32=0
     )
-    request_update_message = constructs.REQUEST_UPDATE_MESSAGE.build(request_update_dict)
+    request_update_message = messages.REQUEST_UPDATE_MESSAGE.build(request_update_dict)
 
     # Updates the crc
-    request_update_dict["crc32"] = constructs.calculate_crc(request_update_message)
-    request_update_message = constructs.REQUEST_UPDATE_MESSAGE.build(request_update_dict)
+    request_update_dict["crc32"] = messages.calculate_crc(request_update_message)
+    request_update_message = messages.REQUEST_UPDATE_MESSAGE.build(request_update_dict)
 
     ip_address = registry.get_value(settings.UPDATING_SERVER_REGISTRY)
     port = registry.get_value(settings.PORT_REGISTRY)

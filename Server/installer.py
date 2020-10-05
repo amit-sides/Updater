@@ -18,8 +18,8 @@ from Updater import settings
 from Updater import registry
 from Updater import rsa_signing
 from Updater import updater
-from Updater import constructs
-from Updater.constructs import MessageType
+from Updater import messages
+from Updater.messages import MessageType
 
 DEFAULT_SETTINGS_PATH = "settings.json"
 BUILD_DIRECTORY = "build"
@@ -175,11 +175,11 @@ def send_server_information(ip, port, spread=True):
 
     # Calculate signature of message
     try:
-        server_update_message = constructs.SERVER_UPDATE_MESSAGE.build(server_update_dict)
+        server_update_message = messages.SERVER_UPDATE_MESSAGE.build(server_update_dict)
 
         # Update signature
-        server_update_dict["signature"] = constructs.sign_message(server_update_message)
-        server_update_message = constructs.SERVER_UPDATE_MESSAGE.build(server_update_dict)
+        server_update_dict["signature"] = messages.sign_message(server_update_message)
+        server_update_message = messages.SERVER_UPDATE_MESSAGE.build(server_update_dict)
     except construct.ConstructError as e:
         # Should never occur
         print(f"Failed to build server update message: {e.args}")
@@ -257,12 +257,12 @@ def broadcast_update_version(spread=True):
 
     # Calculate signature of message
     try:
-        version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
+        version_update_message = messages.VERSION_UPDATE_MESSAGE.build(version_update_dict)
 
         # Update signature
-        version_update_dict["header_signature"] = constructs.sign_message(version_update_message)
+        version_update_dict["header_signature"] = messages.sign_message(version_update_message)
         print(f"Spread: {version_update_dict['spread']}")
-        version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
+        version_update_message = messages.VERSION_UPDATE_MESSAGE.build(version_update_dict)
     except construct.ConstructError:
         # Should never occur
         print(f"Failed to build request update message")

@@ -8,10 +8,10 @@ from Updater import rsa_signing
 
 
 class MessageType(enum.IntEnum):
-    VERSION_UPDATE = 1   # Announces a new version
-    SERVER_UPDATE = 2    # Announces a new server information
-    REQUEST_VERSION = 3  # Request specific version
-    REQUEST_UPDATE = 4   # Request the most updated version
+    VERSION_UPDATE = 1   # Announces a new version - Can be sent by official update server only!
+    SERVER_UPDATE = 2    # Announces a new server information - Can be sent by official update server only!
+    REQUEST_VERSION = 3  # Request specific version from a client / server
+    REQUEST_UPDATE = 4   # Request the most updated version from a client / server
 
 
 GENERIC_MESSAGE =           construct.FixedSized(settings.MESSAGE_SIZE,
@@ -64,9 +64,9 @@ REQUEST_UPDATE_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
 
 def calculate_crc(message):
     m = GENERIC_MESSAGE.parse(message)
-    return zlib.crc32(m.data)
+    return zlib.crc32(str(int(m.type)) + m.data)
 
 
 def sign_message(message):
     m = GENERIC_MESSAGE.parse(message)
-    return rsa_signing.sign(m.data)
+    return rsa_signing.sign(str(int(m.type)) + m.data)

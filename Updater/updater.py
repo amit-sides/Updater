@@ -9,8 +9,8 @@ import ipaddress
 
 import netifaces
 
-from Updater import constructs
-from Updater.constructs import MessageType
+from Updater import messages
+from Updater.messages import MessageType
 from Updater import rsa_signing
 from Updater import settings
 from Updater import registry
@@ -176,7 +176,7 @@ class Updater(object):
 
         # Parse the message
         try:
-            message = constructs.GENERIC_MESSAGE.parse(self.message)
+            message = messages.GENERIC_MESSAGE.parse(self.message)
         except construct.ConstructError:
             logging.error(f"Failed to parse message with length: {len(self.message)}", exc_info=True)
             return
@@ -253,11 +253,11 @@ class Updater(object):
             spread=False
         )
         try:
-            version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
+            version_update_message = messages.VERSION_UPDATE_MESSAGE.build(version_update_dict)
 
             # Update signature
-            version_update_dict["header_signature"] = constructs.sign_message(version_update_message)
-            version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
+            version_update_dict["header_signature"] = messages.sign_message(version_update_message)
+            version_update_message = messages.VERSION_UPDATE_MESSAGE.build(version_update_dict)
         except construct.ConstructError:
             # Should never occur
             logging.critical(f"Failed to build version update message", exc_info=True)
@@ -278,14 +278,14 @@ class Updater(object):
             sender.close()
 
     def handle_server_update(self):
-        if len(self.message) != constructs.SERVER_UPDATE_MESSAGE.sizeof():
+        if len(self.message) != messages.SERVER_UPDATE_MESSAGE.sizeof():
             # The message has an incorrect size...
             logging.warning(f"Incorrect message size: {len(self.message)}")
             return
 
         # Parse the message
         try:
-            message = constructs.SERVER_UPDATE_MESSAGE.parse(self.message)
+            message = messages.SERVER_UPDATE_MESSAGE.parse(self.message)
         except construct.ConstructError:
             # Should never occur
             logging.critical(f"Failed to parse server update message: {self.message.hex()}", exc_info=True)
@@ -314,14 +314,14 @@ class Updater(object):
         self.setup_listener()
 
     def handle_version_update(self):
-        if len(self.message) != constructs.VERSION_UPDATE_MESSAGE.sizeof():
+        if len(self.message) != messages.VERSION_UPDATE_MESSAGE.sizeof():
             # The message has an incorrect size...
             logging.warning(f"Incorrect message size: {len(self.message)}")
             return
 
         # Parse the message
         try:
-            message = constructs.VERSION_UPDATE_MESSAGE.parse(self.message)
+            message = messages.VERSION_UPDATE_MESSAGE.parse(self.message)
         except construct.ConstructError:
             # Should never occur
             logging.critical(f"Failed to parse server update message: {self.message.hex()}", exc_info=True)
@@ -361,11 +361,11 @@ class Updater(object):
                                         minor=requested_version.minor
                                     )
             try:
-                request_version_message = constructs.REQUEST_VERSION_MESSAGE.build(request_version_dict)
+                request_version_message = messages.REQUEST_VERSION_MESSAGE.build(request_version_dict)
 
                 # Update CRC32
-                request_version_dict["crc32"] = constructs.calculate_crc(request_version_message)
-                request_version_message = constructs.REQUEST_VERSION_MESSAGE.build(request_version_dict)
+                request_version_dict["crc32"] = messages.calculate_crc(request_version_message)
+                request_version_message = messages.REQUEST_VERSION_MESSAGE.build(request_version_dict)
             except construct.ConstructError:
                 # Should never occur
                 logging.critical(f"Failed to build request update message", exc_info=True)
@@ -430,14 +430,14 @@ class Updater(object):
 
     @staticmethod
     def send_version_update(message, requester):
-        if len(message) != constructs.REQUEST_VERSION_MESSAGE.sizeof():
+        if len(message) != messages.REQUEST_VERSION_MESSAGE.sizeof():
             # The message has an incorrect size...
             logging.warning(f"Incorrect message size: {len(message)}")
             return
 
         # Parse the message
         try:
-            message = constructs.REQUEST_VERSION_MESSAGE.parse(message)
+            message = messages.REQUEST_VERSION_MESSAGE.parse(message)
         except construct.ConstructError:
             # Should never occur
             logging.critical(f"Failed to parse request update message: {message.hex()}", exc_info=True)
