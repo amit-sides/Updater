@@ -126,5 +126,5 @@ Below you can find an example of some of the commands the installer allows the d
 
 ## Known Issues
 
-* Since the launcher and the service work independently, If one of them tries to write or delete to a file the other reads from, they will encounter a permission error. The code should handle those errors and ignore them, but the files might stay there.
-  * The code is built to minimize these collisions, and to try and delete those files on later occasion, but those collision are still possible.
+* Since the launcher and the service work independently, If one of them tries to write or delete a file the other reads from, they will encounter a permission error. The code should handle those errors and ignore them, but the files might stay there.
+  * The code is built to minimize these collisions, and to try and delete those files on a later occasion, but those collision are still possible.
