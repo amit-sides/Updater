@@ -14,7 +14,7 @@ Below you can find an example of some of the commands the installer allows the d
 * For a full explanation of each command, using `--help` flag for the command you would like to explore.
 * For a brief usage of how to use the installer, see sections `Setup` and `Usage` below.
 
-<img src="..\Images\installer_usage.png" alt="installer_usage.png" style="zoom: 80%;" />
+<div style="text-align:center"><img src="..\Images\installer_usage.png" alt="installer_usage.png" style="zoom: 80%;" /></div>
 
 ## Requirements
 
@@ -93,7 +93,7 @@ Below you can find an example of some of the commands the installer allows the d
 
      * The output of `PyInstaller` and `Inno Setup` should be printed in blue. The output without the "blue parts" should look like this:
 
-       <img src="..\Images\creating_setup.png" alt="creating_setup.png"  />
+       <div style="text-align:center"><img src="..\Images\creating_setup.png" alt="creating_setup.png"  /></div>
 
   6. Once the script has finished (give it some time), you should find your setup file in `Server\Output\<SOFTWARE_NAME>_<major>.<minor>_setup.exe`
 
