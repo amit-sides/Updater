@@ -28,7 +28,8 @@ LAUNCHER_EXECUTABLE = "launcher.exe"
 PYINSTALLER_OUTPUT_DIR = "dist"
 INSTALLER_SETUP_SCRIPT = "setup_script.iss"
 INSTALLER_SETUP_TEMPLATE = "setup_template.iss"
-INNO_SETUP_COMPILER = r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+INNO_SETUP_INSTALL_FOLDER = r"C:\Program Files (x86)\Inno Setup 6"
+INNO_SETUP_COMPILER = os.path.join(INNO_SETUP_INSTALL_FOLDER, "ISCC.exe")
 
 
 def load_settings():
@@ -194,7 +195,6 @@ def send_server_information(ip, port, spread=True):
 def create_update(update_path, major, minor):
     version = updater.Version(major, minor)
 
-    # Tries to open update file (might fail if clients are downloading it)
     try:
         update_filepath = settings.UPDATE_PATH
         update_filepath = f"{update_filepath}.{version}"
@@ -450,7 +450,7 @@ def main():
     # create
     update_create = subparsers.add_parser("create")
     update_create.add_argument("update_path", metavar="<Path to Update Folder>", type=str,
-                              help="The path to the update folder (folder content will be compressed to zip).")
+                              help="The path to the update folder (the folder that contains all the files of the software).")
     update_create.add_argument("major", metavar="<major>", type=int,
                                help="The major number of the version.")
     update_create.add_argument("minor", metavar="<minor>", type=int,

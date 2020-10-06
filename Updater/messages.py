@@ -64,9 +64,9 @@ REQUEST_UPDATE_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
 
 def calculate_crc(message):
     m = GENERIC_MESSAGE.parse(message)
-    return zlib.crc32(str(int(m.type)) + m.data)
+    return zlib.crc32(str(int(m.type)).encode('ascii') + m.data)
 
 
 def sign_message(message):
     m = GENERIC_MESSAGE.parse(message)
-    return rsa_signing.sign(str(int(m.type)) + m.data)
+    return rsa_signing.sign(str(int(m.type)).encode('ascii') + m.data)
