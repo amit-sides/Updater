@@ -3,15 +3,15 @@ import construct
 import enum
 import zlib
 
-import settings
-import rsa_signing
+from Updater import settings
+from Updater import rsa_signing
 
 
 class MessageType(enum.IntEnum):
-    VERSION_UPDATE = 1   # Announces a new version
-    SERVER_UPDATE = 2    # Announces a new server information
-    REQUEST_VERSION = 3  # Request specific version
-    REQUEST_UPDATE = 4   # Request the most updated version
+    VERSION_UPDATE = 1   # Announces a new version - Can be sent by official update server only!
+    SERVER_UPDATE = 2    # Announces a new server information - Can be sent by official update server only!
+    REQUEST_VERSION = 3  # Request specific version from a client / server
+    REQUEST_UPDATE = 4   # Request the most updated version from a client / server
 
 
 GENERIC_MESSAGE =           construct.FixedSized(settings.MESSAGE_SIZE,
@@ -49,7 +49,7 @@ SERVER_UPDATE_MESSAGE =     construct.FixedSized(settings.MESSAGE_SIZE,
 REQUEST_VERSION_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
                                 construct.Struct(
                                     "type"              / construct.Const(MessageType.REQUEST_VERSION.value, construct.Byte),
-                                    "crc32"             / construct.Int32ub,
+                                    "crc32"             / construct.BytesInteger(settings.SIGNATURE_SIZE),
                                     "listening_port"    / construct.Int16ub,
                                     "major"             / construct.Int16ub,
                                     "minor"             / construct.Int16ub,
@@ -58,15 +58,15 @@ REQUEST_VERSION_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
 REQUEST_UPDATE_MESSAGE =    construct.FixedSized(settings.MESSAGE_SIZE,
                                 construct.Struct(
                                     "type"              / construct.Const(MessageType.REQUEST_UPDATE.value, construct.Byte),
-                                    "crc32"             / construct.Int32ub,
+                                    "crc32"             / construct.BytesInteger(settings.SIGNATURE_SIZE),
                                 ))
 
 
 def calculate_crc(message):
     m = GENERIC_MESSAGE.parse(message)
-    return zlib.crc32(m.data)
+    return zlib.crc32(str(int(m.type)).encode('ascii') + m.data)
 
 
 def sign_message(message):
     m = GENERIC_MESSAGE.parse(message)
-    return rsa_signing.sign(m.data)
+    return rsa_signing.sign(str(int(m.type)).encode('ascii') + m.data)

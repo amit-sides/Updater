@@ -1,0 +1,2 @@
+pysimplegui
+cx-freeze==6.1

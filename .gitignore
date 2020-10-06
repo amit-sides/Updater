@@ -1,4 +1,9 @@
 .idea
+*/build
+*/dist
+Server/Output
+*/setup_script.iss
+*/settings.json
 
 
 # Byte-compiled / optimized / DLL files

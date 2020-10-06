@@ -5,13 +5,65 @@ import socket
 import construct
 import zlib
 import threading
-import shutil
+import ipaddress
 
-import constructs
-from constructs import MessageType
-import rsa_signing
-import settings
-import registry
+import netifaces
+
+from Updater import messages
+from Updater.messages import MessageType
+from Updater import rsa_signing
+from Updater import settings
+from Updater import registry
+
+
+def get_all_broadcast_address(sender=None):
+    broadcasts = []
+
+    for interface in netifaces.interfaces():
+        interface = netifaces.ifaddresses(interface)
+        if netifaces.AF_INET not in interface:
+            continue
+
+        for address in interface[netifaces.AF_INET]:
+            if "addr" not in address or "netmask" not in address:
+                continue
+
+            interface_network = ipaddress.ip_interface(address["addr"] + "/" + address["netmask"]).network
+            if interface_network.is_loopback:
+                # We skip loop-back interfaces
+                continue
+
+            if sender:
+                # If sender is given, exclude it from the broadcasting list
+                sender_address = ipaddress.ip_address(sender)
+                if sender_address in interface_network:
+                    # We skip this network since our sender already sent a broadcast to it
+                    continue
+
+            broadcast = interface_network.broadcast_address.compressed
+            broadcasts.append(broadcast)
+
+    return broadcasts
+
+
+def send_broadcast(message, sender=None):
+    broadcaster = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    broadcaster.settimeout(settings.CONNECTION_TIMEOUT)
+    port = registry.get_value(settings.PORT_REGISTRY)
+
+    try:
+        # Enable broadcasting mode
+        broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+        # Sends the broadcast
+        for broadcast_address in get_all_broadcast_address(sender):
+            logging.info(f"Sending broadcast to {broadcast_address}")
+            broadcaster.sendto(message, (broadcast_address, port))
+
+    except socket.error:
+        logging.error("Unknown error while sending broadcast :(", exc_info=True)
+    finally:
+        broadcaster.close()
 
 
 class Version(object):
@@ -78,7 +130,7 @@ class Updater(object):
     def __init__(self):
         self.message = None
         self.sender = None
-        self.management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.management_socket = None
         self.setup_listener()
 
     @staticmethod
@@ -86,36 +138,28 @@ class Updater(object):
         # The updater can be run as an official updates server
         # An update server is distinguished from a normal client only by the
         # fact that it knows the private RSA key
-        return registry.exists(settings.PRIVATE_KEY_REGISTRY)
+        return registry.exists(settings.RSA_PRIVATE_REGISTRY)
 
     def setup_listener(self):
         port = registry.get_value(settings.PORT_REGISTRY)
-        self.management_socket.bind(("0.0.0.0", port))
+        try:
+            self.management_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.management_socket.bind(("0.0.0.0", port))
+        except socket.error as e:
+            logging.critical(f"Failed to bind service socket to port {port}.", exc_info=True)
+            raise e
 
     def broadcast_message(self):
-        broadcaster = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        broadcaster.settimeout(settings.CONNECTION_TIMEOUT)
-        port = registry.get_value(settings.PORT_REGISTRY)
-
-        try:
-            # Enable broadcasting mode
-            broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-            # Sends the broadcast
-            broadcaster.sendto(self.message, ("<broadcast>", port))
-
-        except socket.error:
-            logging.error("Unknown error while sending broadcast :(")
-        finally:
-            broadcaster.shutdown(2)
-            broadcaster.close()
+        sender = self.sender[0] if self.sender else None
+        send_broadcast(self.message, sender=sender)
 
     def receive_message(self):
         try:
             message, sender = self.management_socket.recvfrom(settings.MESSAGE_SIZE)
         except socket.error:
-            logging.info("Failed to receive message on management socket.")
+            logging.info("Failed to receive message on management socket. The message is probably too long.")
             message = sender = None
+            return
 
         if len(message) != settings.MESSAGE_SIZE:
             logging.info(f"Received message with incorrect size: received {len(message)} expected {settings.MESSAGE_SIZE}")
@@ -132,9 +176,9 @@ class Updater(object):
 
         # Parse the message
         try:
-            message = constructs.GENERIC_MESSAGE.parse(self.message)
+            message = messages.GENERIC_MESSAGE.parse(self.message)
         except construct.ConstructError:
-            logging.error(f"Failed to parse message with length: {len(self.message)}")
+            logging.error(f"Failed to parse message with length: {len(self.message)}", exc_info=True)
             return
 
         if len(MessageType) < int(message.type):
@@ -155,17 +199,21 @@ class Updater(object):
             if message_type == MessageType.REQUEST_VERSION:
                 update_sender = threading.Thread(target=Updater.send_version_update, args=(self.message, self.sender))
                 update_sender.setDaemon(True)
+                logging.info(f"Sending update on another thread to {self.sender[0]}")
                 update_sender.start()
-            elif message_type == MessageType.REQUEST_UPDATE and Updater.is_server():
-                # Only the server answers to MessageType.REQUEST_UPDATE
-                self.handle_request_update()
+            elif message_type == MessageType.REQUEST_UPDATE:
+                if Updater.is_server():
+                    # Only the server answers to MessageType.REQUEST_UPDATE
+                    self.handle_request_update()
+                else:
+                    logging.info("A client requested a version from this non-server service.")
 
             return
 
         # Validates the message signature
         if not rsa_signing.validate(message.data, message.signature):
             # Could be either an error in the message or an attacker tampered message
-            logging.warning(f"Invalid signature: {hex(message.signature)}")
+            logging.warning(f"Invalid signature detected: {hex(message.signature)} (maybe tampered?)")
             return
 
         # Handle message
@@ -193,6 +241,7 @@ class Updater(object):
             while bytes_read < update_size:
                 data = update.read(settings.VERSION_CHUNK_SIZE)
                 hash_object.update(data)
+                bytes_read += len(data)
 
         version_update_dict = dict(
             type=MessageType.VERSION_UPDATE,
@@ -204,14 +253,14 @@ class Updater(object):
             spread=False
         )
         try:
-            version_update_message = constructs.VERSION_UPDATE_MESSAGE.build(version_update_dict)
+            version_update_message = messages.VERSION_UPDATE_MESSAGE.build(version_update_dict)
 
             # Update signature
-            version_update_dict["header_signature"] = constructs.sign_message(version_update_message)
-            version_update_message = constructs.REQUEST_UPDATE_MESSAGE.build(version_update_dict)
+            version_update_dict["header_signature"] = messages.sign_message(version_update_message)
+            version_update_message = messages.VERSION_UPDATE_MESSAGE.build(version_update_dict)
         except construct.ConstructError:
             # Should never occur
-            logging.critical(f"Failed to build version update message")
+            logging.critical(f"Failed to build version update message", exc_info=True)
             return
 
         sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -221,24 +270,25 @@ class Updater(object):
         try:
             # Sends the message
             sender.sendto(version_update_message, (self.sender[0], port))
+            logging.info(f"Sent version {current_version} to {self.sender[0]}.")
         except socket.error:
-            logging.error("Unknown error while sending update message :(")
+            logging.error("Unknown error while sending update message :(", exc_info=True)
         finally:
             sender.shutdown(2)
             sender.close()
 
     def handle_server_update(self):
-        if len(self.message) != constructs.SERVER_UPDATE_MESSAGE.sizeof():
+        if len(self.message) != messages.SERVER_UPDATE_MESSAGE.sizeof():
             # The message has an incorrect size...
             logging.warning(f"Incorrect message size: {len(self.message)}")
             return
 
         # Parse the message
         try:
-            message = constructs.SERVER_UPDATE_MESSAGE.parse(self.message)
+            message = messages.SERVER_UPDATE_MESSAGE.parse(self.message)
         except construct.ConstructError:
             # Should never occur
-            logging.critical(f"Failed to parse server update message: {self.message.hex()}")
+            logging.critical(f"Failed to parse server update message: {self.message.hex()}", exc_info=True)
             return
 
         # Check the running id is more updated than the current id
@@ -248,32 +298,33 @@ class Updater(object):
             logging.info(f"Received an outdated server update message. current id: {current_id}, received id: {message.address_id}.")
             return
 
+        # Checks if the sender requested to spread this message using broadcast
+        if message.spread:
+            self.broadcast_message()
+
         # The message is updated, update our data!
-        registry.set_value(settings.UPDATING_SERVER_REGISTRY, message.address)
+        address = message.address.decode("ascii")
+        registry.set_value(settings.UPDATING_SERVER_REGISTRY, address)
         registry.set_value(settings.PORT_REGISTRY, message.port)
         registry.set_value(settings.ADDRESS_ID_REGISTRY, message.address_id)
-        logging.info(f"Updated address to {message.address} and port to {message.port}")
+        logging.info(f"Updated address to {address} and port to {message.port}")
 
         # Since port could have changed, we restart our socket
         self.cleanup_listener()
         self.setup_listener()
 
-        # Checks if the sender requested to spread this message using broadcast
-        if message.spread:
-            self.broadcast_message()
-
     def handle_version_update(self):
-        if len(self.message) != constructs.VERSION_UPDATE_MESSAGE.sizeof():
+        if len(self.message) != messages.VERSION_UPDATE_MESSAGE.sizeof():
             # The message has an incorrect size...
             logging.warning(f"Incorrect message size: {len(self.message)}")
             return
 
         # Parse the message
         try:
-            message = constructs.VERSION_UPDATE_MESSAGE.parse(self.message)
+            message = messages.VERSION_UPDATE_MESSAGE.parse(self.message)
         except construct.ConstructError:
             # Should never occur
-            logging.critical(f"Failed to parse server update message: {self.message.hex()}")
+            logging.critical(f"Failed to parse server update message: {self.message.hex()}", exc_info=True)
             return
 
         # Check the version is not an outdated version
@@ -310,14 +361,14 @@ class Updater(object):
                                         minor=requested_version.minor
                                     )
             try:
-                request_version_message = constructs.REQUEST_UPDATE_MESSAGE.build(request_version_dict)
+                request_version_message = messages.REQUEST_VERSION_MESSAGE.build(request_version_dict)
 
                 # Update CRC32
-                request_version_dict["crc32"] = constructs.calculate_crc(request_version_message)
-                request_version_message = constructs.REQUEST_UPDATE_MESSAGE.build(request_version_dict)
+                request_version_dict["crc32"] = messages.calculate_crc(request_version_message)
+                request_version_message = messages.REQUEST_VERSION_MESSAGE.build(request_version_dict)
             except construct.ConstructError:
                 # Should never occur
-                logging.critical(f"Failed to build request update message")
+                logging.critical(f"Failed to build request update message", exc_info=True)
                 return False
 
             # Creating the file for the update
@@ -339,6 +390,7 @@ class Updater(object):
             hash_object = settings.HASH_MODULE()
 
             # Download the update
+            logging.info(f"Downloading update of version {requested_version}")
             with update_file:
                 while data_received < message.size:
                     chunk = receiver.recv(settings.VERSION_CHUNK_SIZE)
@@ -361,6 +413,7 @@ class Updater(object):
             version_registry = requested_version.get_update_registry_path()
             registry.set_value(version_registry, os.path.abspath(update_filepath))
             requested_version.update_current_version()
+            logging.info(f"Received new update: version {requested_version}")
 
         except socket.timeout:
             # Connection was timed-out, too bad... abort
@@ -371,24 +424,23 @@ class Updater(object):
             logging.info("Socket error has occurred")
             return False
         finally:
-            listener.shutdown(2)
             listener.close()
 
         return True
 
     @staticmethod
     def send_version_update(message, requester):
-        if len(message) != constructs.REQUEST_UPDATE_MESSAGE.sizeof():
+        if len(message) != messages.REQUEST_VERSION_MESSAGE.sizeof():
             # The message has an incorrect size...
             logging.warning(f"Incorrect message size: {len(message)}")
             return
 
         # Parse the message
         try:
-            message = constructs.REQUEST_UPDATE_MESSAGE.parse(message)
+            message = messages.REQUEST_VERSION_MESSAGE.parse(message)
         except construct.ConstructError:
             # Should never occur
-            logging.critical(f"Failed to parse request update message: {message.hex()}")
+            logging.critical(f"Failed to parse request update message: {message.hex()}", exc_info=True)
             return
 
         # Check if the version file exists
@@ -404,9 +456,10 @@ class Updater(object):
         try:
             update_file = open(version_filepath, "rb")
         except OSError:
-            logging.error(f"Unable to open version file: {version_filepath}")
+            logging.error(f"Unable to open version file: {version_filepath}", exc_info=True)
             return
 
+        logging.info(f"Sending update of version {requested_version}")
         sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             # Connect to the TCP server of the receiver
@@ -416,9 +469,11 @@ class Updater(object):
             # Send the update file
             with update_file:
                 chunk = update_file.read(settings.VERSION_CHUNK_SIZE)
-                while chunk != "":
+                while len(chunk) != 0:
                     sender.send(chunk)
                     chunk = update_file.read(settings.VERSION_CHUNK_SIZE)
+
+            logging.info(f"Finished sending update of version {requested_version}")
 
         except socket.timeout:
             # Connection was timed-out, too bad... abort

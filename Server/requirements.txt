@@ -1,5 +1,5 @@
-pywin32
 pycryptodome
 construct
+validators
 netifaces
-pyinstaller
+colorama
