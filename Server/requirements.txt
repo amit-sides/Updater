@@ -1,0 +1,5 @@
+pycryptodome
+construct
+validators
+netifaces
+colorama
