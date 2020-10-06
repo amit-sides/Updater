@@ -190,7 +190,7 @@ class Updater(object):
         # These messages don't require authentication (they are created by the clients)
         # In these messages the 'signature' is nothing but a CRC32 checksum
         if message_type in [MessageType.REQUEST_VERSION, MessageType.REQUEST_UPDATE]:
-            calculated_checksum = zlib.crc32(message.data)
+            calculated_checksum = messages.calculate_crc(self.message)
             if calculated_checksum != message.signature:
                 # Invalid checksum, ignore message...
                 logging.info(f"Received a message with incorrect checksum. received {hex(message.signature)} expected {hex(calculated_checksum)}.")
@@ -211,7 +211,7 @@ class Updater(object):
             return
 
         # Validates the message signature
-        if not rsa_signing.validate(message.data, message.signature):
+        if not rsa_signing.validate(str(int(message.type)).encode('ascii') + message.data, message.signature):
             # Could be either an error in the message or an attacker tampered message
             logging.warning(f"Invalid signature detected: {hex(message.signature)} (maybe tampered?)")
             return
