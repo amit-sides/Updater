@@ -509,6 +509,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize settings
+    colorama.init()
     installer_settings = load_settings()
     settings.__values__.update(installer_settings)
     settings.init_settings(save=False)
