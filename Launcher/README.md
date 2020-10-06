@@ -4,11 +4,13 @@ This program is the **launcher** of the installed program. meaning, the user sho
 
 The launcher is responsible for launching the program and installing the update that is downloaded by the **updater** service. It is also in charge of checking the update server for a new update (or more precisely, allowing the user to query the server for a new update) and deleting old update files.
 
-![launcher.png](..\Images\launcher.png)
+<img src="..\Images\launcher.png" alt="launcher.png"  />
+
+
 
 If the launcher detects the program runs an old version (if an update is available), it prompts the user about that and asks them if they want to update (Or, if the user checked the `Automatically update on next launch` checkbox, then the update is automatically installed without alerting the user). If the user chooses to update, the launcher copies the update file to save it, and applies it (extracting it to the program's location). All that is done with a neat progress bar:
 
-![update.png](..\Images\update.png)
+<img src="..\Images\update.png" alt="update.png"  />
 
 ## Requirements
 

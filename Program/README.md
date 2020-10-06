@@ -34,7 +34,7 @@ The program should be converted to EXE so all the clients can run it without hav
 
    * A GUI message should be displayed:
 
-     ![example_program](..\Images\example_program.png)
+     <img src="..\Images\example_program.png" alt="example_program"/>
 
 2. To convert the script to EXE (aka "freeze" it), run the following command: `python3 cxsetup.py build`
 
