@@ -11,6 +11,8 @@ This means that an organization with a LAN that is not exposed to the internet c
 
 ## Quick Usage
 
+The guides assume that `python3` is the python 3 interpreter and that it is included in PATH. If you installed the `py` launcher, replace `python3` with `py -3`.
+
 To quickly set up an update server and create your software's setup file, see the `Setup` and `Usage` sections in `Server\README.md`.
 
 ## Autor Comment

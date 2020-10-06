@@ -18,10 +18,10 @@ Below you can find an example of some of the commands the installer allows the d
 
 ## Requirements
 
-* Windows machine (Tested on Windows 10 Pro - version 2004, OS Build 19041.508)
+* Windows machine (Tested on Windows 10 Pro 64 bit - version 2004, OS Build 19041.508)
 * Python 3 (Tested on Python 3.8.2 - 64bit)
 * Pip for python 3 (Tested with version 20.2.3)
-* TODO: Build Tools?
+* C++ Build Tools for Visual Studio (Tested with 2019)
 * Inno Setup (Tested with version 6.0.5)
 * Python packages (install using requirements.txt):
   * pycryptodome (Tested with version 3.9.8)
@@ -34,7 +34,9 @@ Below you can find an example of some of the commands the installer allows the d
 
 1. Install python 3 and pip, if you don't have it already.
 
-2. TODO: Install Build Tools?
+2. Download VS Build tools from [here](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16) and install it, if you don't already have it.
+
+   * Select "C++ build tools", and on the right panel only check the 3 first checkboxes: `MSVC`, `Windows 10 SDK`, `C++ CMake`.
 
 3. Run the following command to install the required python packages:
 

@@ -15,10 +15,10 @@ All the messages supported by the service can be found at `messages.py`. They ar
 
 ## Requirements
 
-* Windows machine (Tested on Windows 10 Pro - version 2004, OS Build 19041.508)
+* Windows machine (Tested on Windows 10 Pro 64 bit - version 2004, OS Build 19041.508)
 * Python 3 (Tested on Python 3.8.2 - 64bit)
 * Pip for python 3 (Tested with version 20.2.3)
-* TODO: Build Tools?
+* C++ Build Tools for Visual Studio (Tested with 2019)
 * Python packages (install using requirements.txt):
   * pywin32 (Tested with version 228)
   * pycryptodome (Tested with version 3.9.8)
@@ -30,7 +30,9 @@ All the messages supported by the service can be found at `messages.py`. They ar
 
 1. Install python 3 and pip, if you don't have it already.
 
-2. TODO: Install Build Tools?
+2. Download VS Build tools from [here](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16) and install it, if you don't already have it.
+
+   * Select "C++ build tools", and on the right panel only check the 3 first checkboxes: `MSVC`, `Windows 10 SDK`, `C++ CMake`.
 
 3. Run the following command to install the required python packages:
 
@@ -38,7 +40,7 @@ All the messages supported by the service can be found at `messages.py`. They ar
    python3 -m pip install -r requirements.txt
    ```
 
-4. Copy the file`pywintypesXX.dll` (XX corresponds to your python's version, for example: `pywintypes38.dll`) from `<Python Install Folder>\site-packages\pywin32_system32` to `<Python Install Folder>\Lib\site-packages\win32`.
+4. Copy the file`pywintypesXX.dll` (XX corresponds to your python's version, for example: `pywintypes38.dll`) from `<Python Install Folder>\Lib\site-packages\pywin32_system32` to `<Python Install Folder>\Lib\site-packages\win32`.
 
    * This step fixes a bug in python's windows service implementation. You might not need it, but I encountered it with the setups I used.
 

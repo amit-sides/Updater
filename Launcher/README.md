@@ -12,7 +12,7 @@ If the launcher detects the program runs an old version (if an update is availab
 
 ## Requirements
 
-* Windows machine (Tested on Windows 10 Pro - version 2004, OS Build 19041.508)
+* Windows machine (Tested on Windows 10 Pro 64 bit - version 2004, OS Build 19041.508)
 * Python 3 (Tested on Python 3.8.2 - 64bit)
 * Pip for python 3 (Tested with version 20.2.3)
 * Python packages (install using requirements.txt):
