@@ -18,13 +18,15 @@ The program should be converted to EXE so all the clients can run it without hav
 
 1. Install python 3 and pip, if you don't have it already.
 
-3. Run the following command to install the required python packages:
+   * Make sure Tkinter was installed with python as well.
+
+2. Run the following command to install the required python packages:
 
    ```batch
    python3 -m pip install -r requirements.txt
    ```
 
-5. You now should be ready to run the program and use it! (see usage below)
+3. You now should be ready to run the program and use it! (see usage below)
 
 ## Usage
 
