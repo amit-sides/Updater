@@ -17,7 +17,7 @@ To quickly set up an update server and create your software's setup file, see th
 
 ## Autor Comment
 
-I am sure there are far better solutions to this problem outside, but I liked working on this project and learn a lot of new things:
+I am sure there are far better solutions to this problem outside, but I liked working on this project and learnt a lot of new things:
 
 * Working with sockets API in Python.
 * Sending broadcast messages.
