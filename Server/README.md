@@ -60,7 +60,7 @@ Below you can find an example of some of the commands the installer allows the d
 
 #### 	Creating a setup
 
-* To create a `setup.exe` for a new software, follow these instruction on the updating server (The computer which will be used as the primary server to announces updates):
+* To create a `setup.exe` for a new software, follow these instruction on the updating server (The computer which will be used as the primary server to announce updates):
 
   1. In the file `Updater\settings.py`, update the `SOFTWARE_NAME` and `PROGRAM` (lines 20,21) to the correct values according to your software's name.
 
