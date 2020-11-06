@@ -15,7 +15,7 @@ The guides assume that `python3` is the python 3 interpreter and that it is incl
 
 To quickly set up an update server and create your software's setup file, see the `Setup` and `Usage` sections in `Server\README.md`.
 
-## Autor Comment
+## Author Comment
 
 I am sure there are far better solutions to this problem outside, but I liked working on this project and learnt a lot of new things:
 
