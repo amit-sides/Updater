@@ -156,13 +156,13 @@ class Updater(object):
     def receive_message(self):
         try:
             message, sender = self.management_socket.recvfrom(settings.MESSAGE_SIZE)
+
+            if len(message) != settings.MESSAGE_SIZE:
+                logging.info(
+                    f"Received message with incorrect size: received {len(message)} expected {settings.MESSAGE_SIZE}")
+                message = sender = None
         except socket.error:
             logging.info("Failed to receive message on management socket. The message is probably too long.")
-            message = sender = None
-            return
-
-        if len(message) != settings.MESSAGE_SIZE:
-            logging.info(f"Received message with incorrect size: received {len(message)} expected {settings.MESSAGE_SIZE}")
             message = sender = None
 
         self.message = message
@@ -394,12 +394,14 @@ class Updater(object):
             with update_file:
                 while data_received < message.size:
                     chunk = receiver.recv(settings.VERSION_CHUNK_SIZE)
+                    if len(chunk) == 0: # Occurs when the other side closed the conenction
+                        break
                     update_file.write(chunk)
                     hash_object.update(chunk)
                     data_received += len(chunk)
 
             # Close the TCP connection
-            receiver.shutdown(2)
+            receiver.shutdown(socket.SHUT_RD)
             receiver.close()
 
             # Validate the update signature
@@ -482,7 +484,7 @@ class Updater(object):
             # Socket error
             logging.info("Socket error has occurred")
         finally:
-            sender.shutdown(2)
+            sender.shutdown(socket.SHUT_WR)
             sender.close()
 
     def cleanup_listener(self):
